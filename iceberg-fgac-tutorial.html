@@ -1,0 +1,1605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iceberg-fgac — Fine-Grained Access Control for Apache Iceberg</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #fafaf8;
+    --surface: #ffffff;
+    --surface-2: #f4f3ef;
+    --border: #e8e6df;
+    --border-strong: #d0cdc2;
+    --text: #1a1916;
+    --text-2: #4a4840;
+    --text-3: #8a8678;
+    --accent: #1d6b4f;
+    --accent-light: #e8f4ee;
+    --accent-mid: #2d8c66;
+    --orange: #c4612a;
+    --orange-light: #fdf1ea;
+    --blue: #1a4f82;
+    --blue-light: #e8f0f8;
+    --purple: #5a3a8a;
+    --purple-light: #f0ebf8;
+    --red: #a32b2b;
+    --red-light: #fbeaea;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow: 0 4px 12px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04);
+    --radius: 8px;
+    --radius-lg: 12px;
+    --font-serif: 'Lora', Georgia, serif;
+    --font-sans: 'DM Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+
+  /* ── Layout ─────────────────────────────────────── */
+  .layout { display: flex; min-height: 100vh; }
+
+  .sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 24px 0;
+    z-index: 100;
+  }
+
+  .sidebar-logo {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .sidebar-logo .badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+  }
+  .sidebar-logo h2 {
+    font-family: var(--font-serif);
+    font-size: 16px;
+    color: var(--text);
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .sidebar-logo p {
+    font-size: 12px;
+    color: var(--text-3);
+    margin-top: 3px;
+  }
+
+  .nav-section { margin-bottom: 6px; }
+  .nav-section-title {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-3);
+    padding: 6px 20px;
+  }
+  .nav-section a {
+    display: block;
+    padding: 5px 20px;
+    font-size: 13px;
+    color: var(--text-2);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .nav-section a:hover { color: var(--accent); background: var(--accent-light); border-left-color: var(--accent); }
+
+  .main { margin-left: 260px; max-width: 960px; padding: 48px 56px 120px; }
+
+  /* ── Typography ─────────────────────────────────── */
+  h1 {
+    font-family: var(--font-serif);
+    font-size: 42px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+  h2 {
+    font-family: var(--font-serif);
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--text);
+    margin-top: 64px;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 {
+    font-family: var(--font-sans);
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text);
+    margin-top: 32px;
+    margin-bottom: 10px;
+  }
+  h4 {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-2);
+    margin-top: 20px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  p { margin-bottom: 14px; color: var(--text-2); }
+  strong { color: var(--text); font-weight: 600; }
+  em { font-style: italic; }
+
+  /* ── Hero ───────────────────────────────────────── */
+  .hero {
+    background: linear-gradient(135deg, #0f3826 0%, #1d6b4f 50%, #2d8c66 100%);
+    border-radius: var(--radius-lg);
+    padding: 48px;
+    margin-bottom: 48px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 280px; height: 280px;
+    background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: 40px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(255,255,255,0.04) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .hero h1 { color: #fff; font-size: 36px; margin-bottom: 12px; }
+  .hero p { color: rgba(255,255,255,0.75); font-size: 16px; margin-bottom: 24px; max-width: 580px; }
+  .hero-meta { display: flex; gap: 12px; flex-wrap: wrap; }
+  .hero-tag {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.9);
+    font-size: 12px;
+    font-family: var(--font-mono);
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+
+  /* ── Cards ──────────────────────────────────────── */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 24px 0; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .card-icon { font-size: 22px; margin-bottom: 10px; }
+  .card h4 { margin: 0 0 6px; text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--text); }
+  .card p { font-size: 13px; margin: 0; }
+
+  /* ── Callouts ───────────────────────────────────── */
+  .callout {
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin: 20px 0;
+    border-left: 3px solid;
+    display: flex; gap: 12px;
+  }
+  .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .callout-content p { margin: 0; font-size: 14px; }
+  .callout-content strong { display: block; margin-bottom: 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .callout.info    { background: var(--blue-light);   border-color: var(--blue);   }
+  .callout.warning { background: var(--orange-light); border-color: var(--orange); }
+  .callout.success { background: var(--accent-light); border-color: var(--accent); }
+  .callout.tip     { background: var(--purple-light); border-color: var(--purple); }
+
+  /* ── Code ───────────────────────────────────────── */
+  code {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+  pre {
+    background: #1a1916;
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    overflow-x: auto;
+    margin: 16px 0;
+    box-shadow: var(--shadow);
+  }
+  pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #d4d0c4;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .hljs-comment { color: #7a7668; }
+  .hljs-key     { color: #7ec8a0; }
+  .hljs-string  { color: #e8c97a; }
+  .hljs-number  { color: #c8a8e8; }
+  .hljs-type    { color: #82b8d8; }
+  .hljs-kw      { color: #e88a6a; }
+
+  /* ── Tables ─────────────────────────────────────── */
+  .table-wrap { overflow-x: auto; margin: 20px 0; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); }
+  th {
+    background: var(--surface-2);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-3);
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 11px 16px;
+    font-size: 13.5px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-2);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafaf6; }
+  td code { font-size: 12px; }
+
+  /* ── SVG Diagrams ───────────────────────────────── */
+  .diagram-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    margin: 24px 0;
+    box-shadow: var(--shadow);
+    overflow-x: auto;
+  }
+  .diagram-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-3);
+    margin-bottom: 20px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .diagram-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Decision boxes ─────────────────────────────── */
+  .decision-list { list-style: none; padding: 0; margin: 16px 0; }
+  .decision-list li {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+    font-size: 14px;
+    box-shadow: var(--shadow-sm);
+  }
+  .decision-list li::before {
+    content: '✓';
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 15px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .decision-list .why {
+    display: block;
+    font-size: 12px;
+    color: var(--text-3);
+    margin-top: 3px;
+  }
+
+  /* ── Module grid ────────────────────────────────── */
+  .module-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin: 20px 0; }
+  .module-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s, transform 0.2s;
+  }
+  .module-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+  .module-name {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent);
+    background: var(--accent-light);
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 8px;
+  }
+  .module-card p { font-size: 12.5px; margin: 0; color: var(--text-2); }
+
+  /* ── Steps ──────────────────────────────────────── */
+  .steps { margin: 20px 0; }
+  .step {
+    display: flex; gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .step:last-child { border-bottom: none; }
+  .step-num {
+    width: 28px; height: 28px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .step-body p { margin: 0; font-size: 14px; }
+  .step-body strong { display: block; margin-bottom: 4px; }
+
+  /* ── UDF table ──────────────────────────────────── */
+  .udf-row td:first-child { font-family: var(--font-mono); color: var(--accent); font-size: 12px; }
+
+  /* ── Toc ────────────────────────────────────────── */
+  .toc-box {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin: 24px 0 40px;
+  }
+  .toc-box h4 { margin: 0 0 12px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; color: var(--text-3); }
+  .toc-box ol { padding-left: 20px; }
+  .toc-box li { margin-bottom: 6px; }
+  .toc-box a { color: var(--accent); font-size: 14px; text-decoration: none; }
+  .toc-box a:hover { text-decoration: underline; }
+
+  /* ── Pill badges ────────────────────────────────── */
+  .pill {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-right: 4px;
+  }
+  .pill.green  { background: var(--accent-light); color: var(--accent); }
+  .pill.orange { background: var(--orange-light); color: var(--orange); }
+  .pill.blue   { background: var(--blue-light);   color: var(--blue); }
+  .pill.purple { background: var(--purple-light); color: var(--purple); }
+
+  /* ── Section anchor ─────────────────────────────── */
+  section { scroll-margin-top: 24px; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 48px 0; }
+
+  /* ── Responsive ─────────────────────────────────── */
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 32px 24px 80px; }
+    h1 { font-size: 30px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<!-- ════════════════════════════ SIDEBAR ════════════════════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <span class="badge">v1.0.0-SNAPSHOT</span>
+    <h2>iceberg-fgac</h2>
+    <p>Fine-Grained Access Control</p>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Getting Started</div>
+    <a href="#overview">Overview</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#modules">Module Structure</a>
+    <a href="#decisions">Design Decisions</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-title">Core Concepts</div>
+    <a href="#fgac-model">FGAC Model</a>
+    <a href="#policy-store">Policy Store</a>
+    <a href="#masking">Masking UDFs</a>
+    <a href="#audit">Audit Log</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-title">Integration</div>
+    <a href="#spark">Spark 3.5</a>
+    <a href="#nessie">Project Nessie</a>
+    <a href="#hms">Hive Metastore</a>
+    <a href="#minio">MinIO / S3</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-title">Operations</div>
+    <a href="#build">Build</a>
+    <a href="#config">Configuration</a>
+    <a href="#policy-mgmt">Policy Management</a>
+    <a href="#versions">Version Matrix</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-title">Reference</div>
+    <a href="#roles">Banking Roles</a>
+    <a href="#build-log">Build History</a>
+  </div>
+</nav>
+
+<!-- ════════════════════════════ MAIN ════════════════════════════ -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <h1>iceberg-fgac</h1>
+    <p>Engine-agnostic Fine-Grained Access Control for Apache Iceberg on-premise banking lakehouses. Row-level filtering, column masking, and immutable audit — enforced at query time inside the Spark Catalyst optimizer.</p>
+    <div class="hero-meta">
+      <span class="hero-tag">Iceberg 1.9.2</span>
+      <span class="hero-tag">Spark 3.5.5</span>
+      <span class="hero-tag">Nessie 0.104.5</span>
+      <span class="hero-tag">Java 17</span>
+      <span class="hero-tag">Spring Framework 6.x</span>
+      <span class="hero-tag">Maven Multi-Module</span>
+    </div>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc-box">
+    <h4>Table of Contents</h4>
+    <ol>
+      <li><a href="#overview">Overview — What problem does this solve?</a></li>
+      <li><a href="#architecture">Full Architecture Diagram</a></li>
+      <li><a href="#modules">Module Structure (9 Maven modules)</a></li>
+      <li><a href="#decisions">Design Decisions & Rationale</a></li>
+      <li><a href="#fgac-model">FGAC Model — Roles, Predicates, Masking</a></li>
+      <li><a href="#policy-store">Policy Store — Iceberg table in Nessie</a></li>
+      <li><a href="#masking">Masking UDF Reference</a></li>
+      <li><a href="#audit">Audit Log Design</a></li>
+      <li><a href="#spark">Integrating with Spark 3.5</a></li>
+      <li><a href="#nessie">Project Nessie — Git-style branching</a></li>
+      <li><a href="#hms">Hive Metastore — dual catalog</a></li>
+      <li><a href="#build">Build & Package</a></li>
+      <li><a href="#config">Configuration Reference</a></li>
+      <li><a href="#policy-mgmt">Policy Management at Runtime</a></li>
+      <li><a href="#versions">Version Compatibility Matrix</a></li>
+      <li><a href="#roles">Banking Role Definitions</a></li>
+    </ol>
+  </div>
+
+  <!-- ── 1. OVERVIEW ────────────────────────────────────────── -->
+  <section id="overview">
+    <h2>1 · Overview</h2>
+    <p>Banks and financial institutions running Apache Iceberg lakehouses need <strong>row-level and column-level access control</strong> that is enforced transparently — without requiring analysts to write security predicates themselves, and without trusting applications to apply them correctly.</p>
+    <p><code>iceberg-fgac</code> is a Java framework that plugs into the Spark Catalyst query optimizer as a <strong>custom optimizer rule</strong>. Before any data is physically read, the framework rewrites every Iceberg table scan in the logical plan to inject the entitlements for the authenticated user:</p>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-icon">🔒</div>
+        <h4>Row Filtering</h4>
+        <p>SQL predicates injected as Iceberg <code>Expression</code> objects — pushed into the scan planner before files are listed.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🎭</div>
+        <h4>Column Masking</h4>
+        <p>Sensitive columns wrapped with UDF calls. Analysts see <code>****1234</code> instead of raw account numbers.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📋</div>
+        <h4>Immutable Audit</h4>
+        <p>Every query — allowed or denied — written to an Iceberg table with 7-year retention.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <h4>Sub-microsecond</h4>
+        <p>Policy cache in memory (Guava LoadingCache). Zero I/O on the hot path.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔌</div>
+        <h4>Engine-agnostic API</h4>
+        <p>Core interfaces have zero Spark dependency. A Trino adapter needs only implement 3 methods.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📦</div>
+        <h4>Versioned Policies</h4>
+        <p>Entitlement rules stored in an Iceberg table in Nessie — time-travelable and branch-testable.</p>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <div class="callout-icon">ℹ️</div>
+      <div class="callout-content">
+        <strong>PoC Scope</strong>
+        This is a Proof of Concept for an on-premise banking lakehouse. Service accounts (<code>svc_airflow</code>, <code>svc_spark</code>) are the only identity type. No Kerberos or OIDC is wired in yet — the identity resolver reads from <code>spark.app.current_user</code> in the Spark session config.
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 2. ARCHITECTURE ─────────────────────────────────────── -->
+  <section id="architecture">
+    <h2>2 · Architecture</h2>
+    <p>The diagram below shows the full system stack. FGAC is enforced on the <strong>driver side</strong> during Spark's Catalyst optimization phase — before any tasks are dispatched to executors.</p>
+
+    <div class="diagram-wrap">
+      <div class="diagram-title">Full Stack Architecture</div>
+      <svg viewBox="0 0 820 540" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:820px;display:block;margin:0 auto">
+        <defs>
+          <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#b0ab9e"/>
+          </marker>
+          <marker id="arr-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#1d6b4f"/>
+          </marker>
+        </defs>
+
+        <!-- Airflow box -->
+        <rect x="20" y="20" width="150" height="68" rx="8" fill="#fdf1ea" stroke="#c4612a" stroke-width="1.5"/>
+        <text x="95" y="44" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="600" fill="#c4612a">Apache Airflow 3.x</text>
+        <text x="95" y="60" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#8a6450">SparkSubmitOperator</text>
+        <text x="95" y="75" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#8a6450">svc_airflow identity</text>
+
+        <!-- Arrow Airflow → Spark -->
+        <line x1="170" y1="54" x2="208" y2="54" stroke="#b0ab9e" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- Spark box -->
+        <rect x="210" y="20" width="200" height="68" rx="8" fill="#e8f4ee" stroke="#1d6b4f" stroke-width="1.5"/>
+        <text x="310" y="44" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="600" fill="#1d6b4f">Apache Spark 3.5.5</text>
+        <text x="310" y="60" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#3a7a5c">LocalExecutor / Standalone</text>
+        <text x="310" y="75" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#3a7a5c">Java 17  Scala 2.12</text>
+
+        <!-- FGAC Extension box (inside Spark) -->
+        <rect x="225" y="110" width="170" height="100" rx="8" fill="#ffffff" stroke="#1d6b4f" stroke-width="2" stroke-dasharray="5,3"/>
+        <text x="310" y="130" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10" font-weight="700" fill="#1d6b4f">FgacSparkExtension</text>
+        <text x="310" y="146" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9.5" fill="#4a4840">spark.sql.extensions</text>
+        <rect x="237" y="154" width="146" height="22" rx="4" fill="#e8f4ee"/>
+        <text x="310" y="168" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#1d6b4f">CatalystEntitlementRule</text>
+        <rect x="237" y="182" width="146" height="20" rx="4" fill="#e8f4ee"/>
+        <text x="310" y="196" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#1d6b4f">SparkUdfRegistrar (6 UDFs)</text>
+
+        <!-- Arrow Spark → FGAC ext -->
+        <line x1="310" y1="88" x2="310" y2="108" stroke="#1d6b4f" stroke-width="1.5" marker-end="url(#arr-green)"/>
+
+        <!-- Catalyst flow -->
+        <rect x="20" y="240" width="760" height="60" rx="8" fill="#f4f3ef" stroke="#d0cdc2" stroke-width="1.5"/>
+        <text x="400" y="264" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10.5" font-weight="600" fill="#4a4840">Catalyst Optimizer Pipeline</text>
+        <text x="140" y="283" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#8a8678">Parse SQL</text>
+        <text x="260" y="283" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#8a8678">Analyze</text>
+        <rect x="320" y="258" width="160" height="34" rx="4" fill="#1d6b4f"/>
+        <text x="400" y="278" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#fff">injectOptimizerRule</text>
+        <text x="400" y="291" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#c8e8d8">→ CatalystEntitlementRule</text>
+        <text x="560" y="283" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#8a8678">Physical Plan</text>
+        <text x="690" y="283" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#8a8678">Execute</text>
+
+        <!-- Arrow FGAC → Catalyst -->
+        <line x1="310" y1="210" x2="310" y2="238" stroke="#1d6b4f" stroke-width="1.5" marker-end="url(#arr-green)"/>
+        <line x1="400" y1="238" x2="400" y2="212" stroke="#b0ab9e" stroke-width="1" stroke-dasharray="3,2"/>
+
+        <!-- Policy Cache -->
+        <rect x="450" y="110" width="150" height="82" rx="8" fill="#f0ebf8" stroke="#5a3a8a" stroke-width="1.5"/>
+        <text x="525" y="132" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10.5" font-weight="600" fill="#5a3a8a">PolicyCacheManager</text>
+        <text x="525" y="148" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#7a5aa0">Guava LoadingCache</text>
+        <text x="525" y="161" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#7a5aa0">TTL: 5 minutes</text>
+        <text x="525" y="174" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#7a5aa0">IcebergPolicyStore</text>
+        <text x="525" y="187" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#7a5aa0">sub-μs on hit</text>
+
+        <!-- Arrow Rule → Cache -->
+        <line x1="397" y1="155" x2="448" y2="155" stroke="#b0ab9e" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- Nessie -->
+        <rect x="450" y="330" width="150" height="60" rx="8" fill="#e8f0f8" stroke="#1a4f82" stroke-width="1.5"/>
+        <text x="525" y="354" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10.5" font-weight="600" fill="#1a4f82">Project Nessie 0.104.5</text>
+        <text x="525" y="370" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#3a6090">ghcr.io/projectnessie/nessie</text>
+        <text x="525" y="383" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#3a6090">PostgreSQL backend</text>
+
+        <!-- MinIO -->
+        <rect x="630" y="330" width="150" height="60" rx="8" fill="#fdf1ea" stroke="#c4612a" stroke-width="1.5"/>
+        <text x="705" y="354" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10.5" font-weight="600" fill="#c4612a">MinIO (S3-compatible)</text>
+        <text x="705" y="370" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#8a6450">s3a://warehouse/</text>
+        <text x="705" y="383" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#8a6450">Parquet data files</text>
+
+        <!-- HMS -->
+        <rect x="20" y="330" width="150" height="60" rx="8" fill="#f4f3ef" stroke="#8a8678" stroke-width="1.5"/>
+        <text x="95" y="354" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10.5" font-weight="600" fill="#4a4840">Hive Metastore 3.1.3</text>
+        <text x="95" y="370" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#8a8678">Secondary catalog</text>
+        <text x="95" y="383" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#8a8678">Dual-write from Spark</text>
+
+        <!-- PostgreSQL -->
+        <rect x="200" y="330" width="150" height="60" rx="8" fill="#e8f4ee" stroke="#1d6b4f" stroke-width="1.5"/>
+        <text x="275" y="354" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10.5" font-weight="600" fill="#1d6b4f">PostgreSQL 15</text>
+        <text x="275" y="370" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#3a7a5c">airflow_db</text>
+        <text x="275" y="383" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#3a7a5c">nessie_db  hive_meta_db</text>
+
+        <!-- Iceberg tables label -->
+        <rect x="450" y="420" width="330" height="50" rx="8" fill="#ffffff" stroke="#d0cdc2" stroke-width="1"/>
+        <text x="615" y="440" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10" font-weight="600" fill="#4a4840">Iceberg Tables in Nessie</text>
+        <text x="530" y="458" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#8a8678">entitlements.rules</text>
+        <text x="660" y="458" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#8a8678">audit.query_log</text>
+        <text x="750" y="458" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#8a8678">+data tables</text>
+
+        <!-- Connectors -->
+        <line x1="525" y1="192" x2="525" y2="328" stroke="#5a3a8a" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+        <line x1="525" y1="390" x2="525" y2="418" stroke="#1a4f82" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arr)"/>
+        <line x1="705" y1="390" x2="705" y2="418" stroke="#c4612a" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arr)"/>
+        <line x1="275" y1="300" x2="275" y2="328" stroke="#b0ab9e" stroke-width="1.5" marker-end="url(#arr)"/>
+        <line x1="95" y1="300" x2="95" y2="328" stroke="#b0ab9e" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- Async Audit -->
+        <rect x="630" y="110" width="150" height="82" rx="8" fill="#fbeaea" stroke="#a32b2b" stroke-width="1.5"/>
+        <text x="705" y="132" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10.5" font-weight="600" fill="#a32b2b">AsyncAuditEmitter</text>
+        <text x="705" y="148" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#8a3030">BlockingQueue(10k)</text>
+        <text x="705" y="161" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#8a3030">batch flush 10s</text>
+        <text x="705" y="174" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#8a3030">IcebergAuditSink</text>
+        <text x="705" y="187" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#8a3030">7yr retention</text>
+
+        <!-- Rule → Audit -->
+        <line x1="397" y1="170" x2="628" y2="150" stroke="#a32b2b" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+        <line x1="705" y1="192" x2="705" y2="328" stroke="#a32b2b" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arr)"/>
+
+        <!-- Legend -->
+        <rect x="20" y="480" width="420" height="28" rx="4" fill="#f4f3ef" stroke="#e8e6df" stroke-width="1"/>
+        <circle cx="38" cy="494" r="5" fill="#1d6b4f"/>
+        <text x="48" y="498" font-family="DM Sans,sans-serif" font-size="10" fill="#4a4840">FGAC hot path</text>
+        <line x1="115" y1="494" x2="140" y2="494" stroke="#b0ab9e" stroke-width="1.5" stroke-dasharray="4,2"/>
+        <text x="148" y="498" font-family="DM Sans,sans-serif" font-size="10" fill="#4a4840">async/background</text>
+        <line x1="240" y1="494" x2="265" y2="494" stroke="#a32b2b" stroke-width="1.5" stroke-dasharray="4,2"/>
+        <text x="273" y="498" font-family="DM Sans,sans-serif" font-size="10" fill="#4a4840">audit path</text>
+        <rect x="330" y="488" width="12" height="12" rx="2" fill="#e8f0f8" stroke="#1a4f82"/>
+        <text x="348" y="498" font-family="DM Sans,sans-serif" font-size="10" fill="#4a4840">external service</text>
+      </svg>
+    </div>
+
+    <h3>Request Flow — What happens when an analyst runs a query</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Airflow submits Spark job</strong>
+          <p>SparkSubmitOperator sets <code>spark.app.current_user=svc_airflow</code> in the job config. This is the identity token read by <code>SparkIdentityResolver</code>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Spark session starts — extension loads</strong>
+          <p><code>FgacSparkExtension.apply()</code> is called. Spring context is initialised on the driver. <code>CatalystEntitlementRule</code> is registered via <code>injectOptimizerRule</code>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Analyst query hits Catalyst</strong>
+          <p><code>CatalystEntitlementRule.apply(plan)</code> is called. It walks the logical plan bottom-up via <code>transformUp</code> looking for <code>DataSourceV2Relation</code> Iceberg scan nodes.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>Policy lookup — sub-microsecond</strong>
+          <p><code>PolicyCacheManager.findMostPermissive(identity, tableName)</code> checks the in-memory Guava cache. On a miss it reads from <code>nessie.entitlements.rules</code> via the Iceberg Java API and caches for 5 minutes.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <strong>Plan rewriting</strong>
+          <p>If a row predicate exists: <code>new Filter(parsedExpr, relation)</code> is injected. Iceberg's Spark connector then pushes this into its scan planner as a native <code>Expression</code> — only matching files are listed. If columns are restricted: <code>new Project(allowedCols, plan)</code> is injected with masked columns wrapped in UDF calls.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <strong>Audit emitted asynchronously</strong>
+          <p><code>AsyncAuditEventEmitter.emit(event)</code> places an event on a bounded queue and returns immediately (zero latency impact). A background thread drains the queue every 10 seconds and appends batches to <code>nessie.audit.query_log</code>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- ── 3. MODULES ──────────────────────────────────────────── -->
+  <section id="modules">
+    <h2>3 · Module Structure</h2>
+    <p>9 Maven modules arranged in a strict dependency order. No circular dependencies. <code>fgac-api</code> is the only module engine adapters need to compile against.</p>
+
+    <div class="diagram-wrap">
+      <div class="diagram-title">Module Dependency Graph</div>
+      <svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px;display:block;margin:0 auto">
+        <defs>
+          <marker id="a2" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto">
+            <path d="M0,0 L0,5 L7,2.5 z" fill="#1d6b4f"/>
+          </marker>
+        </defs>
+        <!-- fgac-api -->
+        <rect x="300" y="10" width="160" height="36" rx="6" fill="#1d6b4f"/>
+        <text x="380" y="32" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="12" fill="#fff" font-weight="500">fgac-api</text>
+
+        <!-- fgac-testing -->
+        <rect x="20" y="90" width="140" height="36" rx="6" fill="#f4f3ef" stroke="#d0cdc2" stroke-width="1.5"/>
+        <text x="90" y="112" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="#4a4840">fgac-testing</text>
+
+        <!-- fgac-core -->
+        <rect x="300" y="90" width="160" height="36" rx="6" fill="#2d8c66"/>
+        <text x="380" y="112" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="12" fill="#fff" font-weight="500">fgac-core</text>
+
+        <!-- fgac-masking -->
+        <rect x="580" y="90" width="150" height="36" rx="6" fill="#f4f3ef" stroke="#d0cdc2" stroke-width="1.5"/>
+        <text x="655" y="112" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="#4a4840">fgac-masking</text>
+
+        <!-- fgac-policy-store -->
+        <rect x="140" y="170" width="170" height="36" rx="6" fill="#e8f0f8" stroke="#1a4f82" stroke-width="1.5"/>
+        <text x="225" y="192" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10.5" fill="#1a4f82">fgac-policy-store</text>
+
+        <!-- fgac-audit -->
+        <rect x="330" y="170" width="120" height="36" rx="6" fill="#fbeaea" stroke="#a32b2b" stroke-width="1.5"/>
+        <text x="390" y="192" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="#a32b2b">fgac-audit</text>
+
+        <!-- fgac-spark-adapter -->
+        <rect x="250" y="230" width="250" height="22" rx="6" fill="#0f3826"/>
+        <text x="375" y="245" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="#a8dfc4" font-weight="500">fgac-spark-adapter</text>
+
+        <!-- Arrows -->
+        <line x1="380" y1="46" x2="90" y2="88" stroke="#1d6b4f" stroke-width="1.5" marker-end="url(#a2)"/>
+        <line x1="380" y1="46" x2="380" y2="88" stroke="#1d6b4f" stroke-width="1.5" marker-end="url(#a2)"/>
+        <line x1="380" y1="46" x2="655" y2="88" stroke="#1d6b4f" stroke-width="1.5" marker-end="url(#a2)"/>
+        <line x1="380" y1="126" x2="225" y2="168" stroke="#1d6b4f" stroke-width="1.2" stroke-dasharray="4,2" marker-end="url(#a2)"/>
+        <line x1="380" y1="126" x2="390" y2="168" stroke="#1d6b4f" stroke-width="1.2" stroke-dasharray="4,2" marker-end="url(#a2)"/>
+        <line x1="380" y1="208" x2="375" y2="228" stroke="#0f3826" stroke-width="1.5" marker-end="url(#a2)"/>
+        <line x1="225" y1="206" x2="310" y2="228" stroke="#1a4f82" stroke-width="1.2" stroke-dasharray="4,2" marker-end="url(#a2)"/>
+        <line x1="655" y1="126" x2="440" y2="228" stroke="#8a8678" stroke-width="1.2" stroke-dasharray="4,2" marker-end="url(#a2)"/>
+      </svg>
+    </div>
+
+    <div class="module-grid">
+      <div class="module-card">
+        <span class="module-name">fgac-api</span>
+        <p>Pure Java interfaces and immutable domain objects. Zero framework dependencies. The only module a future Trino adapter needs.</p>
+      </div>
+      <div class="module-card">
+        <span class="module-name">fgac-core</span>
+        <p><code>IcebergExpressionBuilder</code> (predicate parser), <code>PolicyCacheManager</code> (Guava TTL cache), <code>ColumnPolicyEngine</code>, Spring context lifecycle.</p>
+      </div>
+      <div class="module-card">
+        <span class="module-name">fgac-policy-store</span>
+        <p>Reads/writes entitlement rules from <code>nessie.entitlements.rules</code> via the Iceberg Java API. Seeds on first startup from JSON.</p>
+      </div>
+      <div class="module-card">
+        <span class="module-name">fgac-masking</span>
+        <p>6 pure static masking functions — no engine dependency. Account number, email, national ID, phone, DOB, sort code.</p>
+      </div>
+      <div class="module-card">
+        <span class="module-name">fgac-audit</span>
+        <p>Bounded <code>BlockingQueue</code> emitter, batch-write to <code>nessie.audit.query_log</code>. Never blocks the query path.</p>
+      </div>
+      <div class="module-card">
+        <span class="module-name">fgac-spark-adapter</span>
+        <p>Catalyst rule, <code>FgacSparkExtension</code>, UDF registration, identity resolver. Produces a fat JAR with Shade plugin.</p>
+      </div>
+      <div class="module-card">
+        <span class="module-name">fgac-testing</span>
+        <p><code>MockPolicyStore</code>, <code>CapturingAuditEmitter</code>, <code>PolicyFixtures</code> — shared test infrastructure, no external services needed.</p>
+      </div>
+      <div class="module-card">
+        <span class="module-name">fgac-bom</span>
+        <p>Bill of Materials — version alignment for consumers importing individual modules rather than the full stack.</p>
+      </div>
+      <div class="module-card">
+        <span class="module-name">fgac-integration-tests</span>
+        <p>Testcontainers-based end-to-end tests (skeleton). Requires Docker. Run separately from unit tests.</p>
+      </div>
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- ── 4. DECISIONS ────────────────────────────────────────── -->
+  <section id="decisions">
+    <h2>4 · Design Decisions</h2>
+    <p>Every key decision made during this project, with the rationale locked in.</p>
+
+    <h3>Access Control Engine</h3>
+    <ul class="decision-list">
+      <li>
+        <div>
+          <strong>Java framework with engine-agnostic core</strong>
+          <span class="why">Rejected: Apache Ranger (too heavyweight, requires HDFS), OPA (JSON policy language, separate process, network hop per query), Lake Formation (AWS-only). The Iceberg Expressions API gives us pushdown-aware row filtering with zero additional dependencies.</span>
+        </div>
+      </li>
+      <li>
+        <div>
+          <strong>Catalyst optimizer rule — not a DataSource wrapper</strong>
+          <span class="why">Injecting at the optimizer level means the filter appears in the logical plan before physical planning. Iceberg's Spark connector sees it as a native expression and pushes it to the file-level manifest filter. A DataSource wrapper would apply after file listing — much less efficient.</span>
+        </div>
+      </li>
+    </ul>
+
+    <h3>Policy Storage</h3>
+    <ul class="decision-list">
+      <li>
+        <div>
+          <strong>Policies stored as an Iceberg table (<code>nessie.entitlements.rules</code>)</strong>
+          <span class="why">Versioned, time-travelable, branchable — same tooling as the data. A policy change on a Nessie branch can be tested before merge. 7-year retention via Iceberg snapshot expiry aligns with banking audit requirements.</span>
+        </div>
+      </li>
+      <li>
+        <div>
+          <strong>In-memory cache with 5-minute TTL</strong>
+          <span class="why">Guava LoadingCache with sub-microsecond reads on hit. Policy changes take effect within 5 minutes without restarting any process.</span>
+        </div>
+      </li>
+    </ul>
+
+    <h3>Nessie Branching Strategy</h3>
+    <ul class="decision-list">
+      <li>
+        <div>
+          <strong>Per-domain branches: <code>transactions/dev → staging → main</code></strong>
+          <span class="why">Each ETL run branches off domain/dev. Changes merge through staging before reaching main, mirroring a software release pipeline applied to data.</span>
+        </div>
+      </li>
+    </ul>
+
+    <h3>Identity</h3>
+    <ul class="decision-list">
+      <li>
+        <div>
+          <strong>Service accounts only — identity via <code>spark.app.current_user</code></strong>
+          <span class="why">PoC scope. For production: replace <code>SparkIdentityResolver</code> with a Kerberos or JWT-backed resolver. The resolver interface is in <code>fgac-api</code> — swap without touching any other module.</span>
+        </div>
+      </li>
+    </ul>
+
+    <h3>Build</h3>
+    <ul class="decision-list">
+      <li>
+        <div>
+          <strong>Iceberg 1.9.2 (not 1.10.x)</strong>
+          <span class="why">1.10.0 introduces format-version V3 (binary deletion vectors, new data types). V3 tables cannot be read by older engines. For a PoC, V3 adds risk with no benefit. 1.9.2 is the latest stable V2-format release for Spark 3.5.</span>
+        </div>
+      </li>
+      <li>
+        <div>
+          <strong>Spring Framework (not Spring Boot) for DI</strong>
+          <span class="why">Spring Boot autoconfiguration is inappropriate in a Spark fat JAR — it triggers component scanning and embedded server startup. Bare <code>spring-context</code> gives us <code>@Component</code> + <code>@PostConstruct</code> without the boot baggage.</span>
+        </div>
+      </li>
+      <li>
+        <div>
+          <strong>Maven Shade plugin with Guava relocation</strong>
+          <span class="why">Spark ships its own Guava version. Relocating <code>com.google.guava</code> to <code>com.banking.fgac.shaded.guava</code> in the fat JAR prevents class conflicts at runtime.</span>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <hr>
+
+  <!-- ── 5. FGAC MODEL ───────────────────────────────────────── -->
+  <section id="fgac-model">
+    <h2>5 · FGAC Model</h2>
+    <p>Every entitlement is a <strong>triple</strong>: a <em>role</em> + a <em>table</em> + a <em>policy</em>. The policy has two parts: a row predicate and a column policy.</p>
+
+    <div class="diagram-wrap">
+      <div class="diagram-title">Entitlement Object Model</div>
+      <svg viewBox="0 0 700 280" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:700px;display:block;margin:0 auto">
+        <!-- TableEntitlement -->
+        <rect x="250" y="10" width="200" height="120" rx="8" fill="#1d6b4f"/>
+        <text x="350" y="35" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="700" fill="#fff">TableEntitlement</text>
+        <line x1="258" y1="42" x2="442" y2="42" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+        <text x="265" y="58" font-family="JetBrains Mono,monospace" font-size="10" fill="#c8e8d8">roleName: String</text>
+        <text x="265" y="73" font-family="JetBrains Mono,monospace" font-size="10" fill="#c8e8d8">tableName: String</text>
+        <text x="265" y="88" font-family="JetBrains Mono,monospace" font-size="10" fill="#c8e8d8">auditEnabled: boolean</text>
+        <text x="265" y="103" font-family="JetBrains Mono,monospace" font-size="10" fill="#c8e8d8">effectiveFrom: Instant</text>
+        <text x="265" y="118" font-family="JetBrains Mono,monospace" font-size="10" fill="#c8e8d8">effectiveTo: Instant?</text>
+
+        <!-- RowPolicy -->
+        <rect x="20" y="180" width="200" height="88" rx="8" fill="#e8f0f8" stroke="#1a4f82" stroke-width="1.5"/>
+        <text x="120" y="200" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="700" fill="#1a4f82">RowPolicy</text>
+        <line x1="28" y1="207" x2="212" y2="207" stroke="#c0d0e8" stroke-width="1"/>
+        <text x="35" y="222" font-family="JetBrains Mono,monospace" font-size="10" fill="#3a6090">predicate: String</text>
+        <text x="35" y="237" font-family="JetBrains Mono,monospace" font-size="10" fill="#3a6090">"ALLOW_ALL"</text>
+        <text x="35" y="251" font-family="JetBrains Mono,monospace" font-size="10" fill="#3a6090">"DENY_ALL"</text>
+        <text x="35" y="266" font-family="JetBrains Mono,monospace" font-size="10" fill="#3a6090">"jurisdiction='UK'"</text>
+
+        <!-- ColumnPolicy -->
+        <rect x="260" y="180" width="200" height="88" rx="8" fill="#f0ebf8" stroke="#5a3a8a" stroke-width="1.5"/>
+        <text x="360" y="200" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="700" fill="#5a3a8a">ColumnPolicy</text>
+        <line x1="268" y1="207" x2="452" y2="207" stroke="#d0c0e8" stroke-width="1"/>
+        <text x="275" y="222" font-family="JetBrains Mono,monospace" font-size="10" fill="#7050a0">allowedColumns: List</text>
+        <text x="275" y="237" font-family="JetBrains Mono,monospace" font-size="10" fill="#7050a0">maskedColumns: Map</text>
+        <text x="275" y="251" font-family="JetBrains Mono,monospace" font-size="10" fill="#7050a0">  col → udfName</text>
+        <text x="275" y="266" font-family="JetBrains Mono,monospace" font-size="10" fill="#7050a0">redactedColumns: List</text>
+
+        <!-- UserIdentity -->
+        <rect x="500" y="180" width="180" height="88" rx="8" fill="#e8f4ee" stroke="#1d6b4f" stroke-width="1.5"/>
+        <text x="590" y="200" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" font-weight="700" fill="#1d6b4f">UserIdentity</text>
+        <line x1="508" y1="207" x2="672" y2="207" stroke="#c0e0d0" stroke-width="1"/>
+        <text x="515" y="222" font-family="JetBrains Mono,monospace" font-size="10" fill="#2a6a4a">principalId: String</text>
+        <text x="515" y="237" font-family="JetBrains Mono,monospace" font-size="10" fill="#2a6a4a">roles: List&lt;String&gt;</text>
+        <text x="515" y="251" font-family="JetBrains Mono,monospace" font-size="10" fill="#2a6a4a">attributes: Map</text>
+        <text x="515" y="266" font-family="JetBrains Mono,monospace" font-size="10" fill="#2a6a4a">UNKNOWN (sentinel)</text>
+
+        <!-- Lines -->
+        <line x1="278" y1="130" x2="120" y2="178" stroke="#1a4f82" stroke-width="1.5" stroke-dasharray="4,2"/>
+        <line x1="350" y1="130" x2="360" y2="178" stroke="#5a3a8a" stroke-width="1.5" stroke-dasharray="4,2"/>
+        <line x1="430" y1="70" x2="498" y2="178" stroke="#1d6b4f" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="458" y="140" font-family="DM Sans,sans-serif" font-size="9" fill="#8a8678" transform="rotate(-55,458,140)">resolved by</text>
+      </svg>
+    </div>
+
+    <h3>Row Policy Predicate Syntax</h3>
+    <p>The <code>IcebergExpressionBuilder</code> parses a SQL WHERE clause fragment and converts it to an Iceberg <code>Expression</code>. Supported syntax:</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Syntax</th><th>Iceberg API</th><th>Example</th></tr></thead>
+        <tbody>
+          <tr><td><code>ALLOW_ALL</code></td><td><code>Expressions.alwaysTrue()</code></td><td>Data engineers, compliance officers</td></tr>
+          <tr><td><code>DENY_ALL</code></td><td><code>Expressions.alwaysFalse()</code></td><td>Default when no entitlement found</td></tr>
+          <tr><td><code>col = 'val'</code></td><td><code>Expressions.equal()</code></td><td><code>jurisdiction = 'UK'</code></td></tr>
+          <tr><td><code>col != 'val'</code></td><td><code>Expressions.notEqual()</code></td><td><code>status != 'CANCELLED'</code></td></tr>
+          <tr><td><code>col IN ('a','b')</code></td><td><code>Expressions.in()</code></td><td><code>jurisdiction IN ('DE','FR','NL')</code></td></tr>
+          <tr><td><code>col NOT IN (...)</code></td><td><code>Expressions.notIn()</code></td><td><code>jurisdiction NOT IN ('TEST')</code></td></tr>
+          <tr><td><code>col IS NULL</code></td><td><code>Expressions.isNull()</code></td><td><code>deleted_at IS NULL</code></td></tr>
+          <tr><td><code>col IS NOT NULL</code></td><td><code>Expressions.notNull()</code></td><td><code>effective_from IS NOT NULL</code></td></tr>
+          <tr><td><code>col &gt; n</code></td><td><code>Expressions.greaterThan()</code></td><td><code>risk_score &gt; 7</code></td></tr>
+          <tr><td><code>A AND B</code></td><td><code>Expressions.and()</code></td><td><code>jurisdiction='UK' AND classification='INTERNAL'</code></td></tr>
+          <tr><td><code>A OR B</code></td><td><code>Expressions.or()</code></td><td><code>jurisdiction='UK' OR jurisdiction='IE'</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- ── 6. POLICY STORE ─────────────────────────────────────── -->
+  <section id="policy-store">
+    <h2>6 · Policy Store</h2>
+    <p>Entitlement rules live in an Iceberg table at <code>nessie.entitlements.rules</code>. The table is created automatically on first startup by <code>SeedPolicyLoader</code> from the JSON seed file.</p>
+
+    <h3>Schema</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>role_name</code></td><td>STRING NOT NULL</td><td>Matches role names in identity system</td></tr>
+          <tr><td><code>table_name</code></td><td>STRING NOT NULL</td><td>Fully qualified: <code>namespace.table</code></td></tr>
+          <tr><td><code>row_predicate</code></td><td>STRING NOT NULL</td><td><code>ALLOW_ALL</code>, <code>DENY_ALL</code>, or SQL predicate</td></tr>
+          <tr><td><code>allowed_columns</code></td><td>STRING (JSON array)</td><td>Empty = all columns allowed</td></tr>
+          <tr><td><code>masked_columns</code></td><td>STRING (JSON object)</td><td><code>{"col": "udf_name"}</code></td></tr>
+          <tr><td><code>redacted_columns</code></td><td>STRING (JSON array)</td><td>Completely hidden from output</td></tr>
+          <tr><td><code>audit_enabled</code></td><td>BOOLEAN</td><td>Default: true</td></tr>
+          <tr><td><code>effective_from</code></td><td>LONG (epoch ms)</td><td>Default: epoch 0</td></tr>
+          <tr><td><code>effective_to</code></td><td>LONG (epoch ms)</td><td>null = no expiry</td></tr>
+          <tr><td><code>description</code></td><td>STRING</td><td>Free text for operators</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Seed File Format</h3>
+    <pre><code><span class="hljs-comment">// config/policies/seed-policies.json</span>
+{
+  <span class="hljs-key">"version"</span>: <span class="hljs-string">"1.0.0"</span>,
+  <span class="hljs-key">"entitlements"</span>: [
+    {
+      <span class="hljs-key">"roleName"</span>:      <span class="hljs-string">"analyst_uk"</span>,
+      <span class="hljs-key">"tableName"</span>:     <span class="hljs-string">"silver.cleansed_transactions"</span>,
+      <span class="hljs-key">"rowPredicate"</span>:  <span class="hljs-string">"jurisdiction = 'UK'"</span>,
+      <span class="hljs-key">"allowedColumns"</span>: [<span class="hljs-string">"transaction_id"</span>, <span class="hljs-string">"account_number"</span>, <span class="hljs-string">"transaction_amount"</span>],
+      <span class="hljs-key">"maskedColumns"</span>:  { <span class="hljs-string">"account_number"</span>: <span class="hljs-string">"fgac_mask_account_number"</span> },
+      <span class="hljs-key">"redactedColumns"</span>: [<span class="hljs-string">"data_classification"</span>, <span class="hljs-string">"_ingested_at"</span>],
+      <span class="hljs-key">"auditEnabled"</span>:  <span class="hljs-number">true</span>
+    }
+  ]
+}</code></pre>
+  </section>
+
+  <hr>
+
+  <!-- ── 7. MASKING ──────────────────────────────────────────── -->
+  <section id="masking">
+    <h2>7 · Masking UDFs</h2>
+    <p>All masking functions are pure static methods in <code>MaskingFunctionLibrary</code> — no Spark dependency, testable in isolation. They are registered as Spark SQL UDFs via <code>SparkUdfRegistrar</code> using <code>session.udf().register()</code>.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>UDF Name</th><th>Input</th><th>Output</th><th>Banking Use Case</th></tr></thead>
+        <tbody class="udf-row">
+          <tr>
+            <td><code>fgac_mask_account_number</code></td>
+            <td><code>1234567890123456</code></td>
+            <td><code>************3456</code></td>
+            <td>UK sort-code accounts, IBANs</td>
+          </tr>
+          <tr>
+            <td><code>fgac_mask_email</code></td>
+            <td><code>john.doe@bank.com</code></td>
+            <td><code>j*******@bank.com</code></td>
+            <td>Customer PII in KYC tables</td>
+          </tr>
+          <tr>
+            <td><code>fgac_redact_national_id</code></td>
+            <td><code>AB123456C</code></td>
+            <td><code>REDACTED</code></td>
+            <td>NI numbers, passport IDs</td>
+          </tr>
+          <tr>
+            <td><code>fgac_mask_phone</code></td>
+            <td><code>+447911123456</code></td>
+            <td><code>+4479111234**</code></td>
+            <td>Customer contact details</td>
+          </tr>
+          <tr>
+            <td><code>fgac_mask_date_of_birth</code></td>
+            <td><code>1985-04-23</code></td>
+            <td><code>1985-**-**</code></td>
+            <td>GDPR-sensitive DOB fields</td>
+          </tr>
+          <tr>
+            <td><code>fgac_mask_sort_code</code></td>
+            <td><code>20-00-00</code></td>
+            <td><code>**-**-00</code></td>
+            <td>UK sort code + account pairs</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>UDFs can also be called directly in Spark SQL:</p>
+    <pre><code><span class="hljs-kw">SELECT</span>
+  transaction_id,
+  fgac_mask_account_number(account_number) <span class="hljs-kw">AS</span> account_number,
+  transaction_amount,
+  jurisdiction
+<span class="hljs-kw">FROM</span> nessie.silver.cleansed_transactions
+<span class="hljs-kw">WHERE</span> jurisdiction = <span class="hljs-string">'UK'</span>;</code></pre>
+  </section>
+
+  <hr>
+
+  <!-- ── 8. AUDIT ────────────────────────────────────────────── -->
+  <section id="audit">
+    <h2>8 · Audit Log</h2>
+    <p>Every table scan — whether allowed or denied — produces an audit event. Events are written to <code>nessie.audit.query_log</code>, partitioned by <code>day(event_ts)</code> for efficient time-range queries.</p>
+
+    <div class="callout success">
+      <div class="callout-icon">⚖️</div>
+      <div class="callout-content">
+        <strong>7-Year Retention</strong>
+        The audit table's Iceberg snapshot expiry is set to 2,555 days. This satisfies FCA/PRA banking data retention requirements in the UK.
+      </div>
+    </div>
+
+    <h3>Audit Event Schema</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field</th><th>Type</th><th>Example</th></tr></thead>
+        <tbody>
+          <tr><td><code>event_id</code></td><td>UUID</td><td><code>a3f2c1...</code></td></tr>
+          <tr><td><code>event_ts</code></td><td>epoch ms</td><td><code>1742083200000</code></td></tr>
+          <tr><td><code>principal_id</code></td><td>String</td><td><code>svc_airflow</code></td></tr>
+          <tr><td><code>engine_name</code></td><td>String</td><td><code>spark</code></td></tr>
+          <tr><td><code>table_name</code></td><td>String</td><td><code>silver.cleansed_transactions</code></td></tr>
+          <tr><td><code>nessie_ref</code></td><td>String</td><td><code>transactions/main</code></td></tr>
+          <tr><td><code>outcome</code></td><td>ALLOWED / DENIED</td><td><code>ALLOWED</code></td></tr>
+          <tr><td><code>row_filter_applied</code></td><td>String</td><td><code>jurisdiction = 'UK'</code></td></tr>
+          <tr><td><code>planning_duration_ms</code></td><td>Long</td><td><code>0</code> (cache hit)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- ── 9. SPARK ────────────────────────────────────────────── -->
+  <section id="spark">
+    <h2>9 · Integrating with Spark 3.5</h2>
+
+    <h3>Step 1 — Build the fat JAR</h3>
+    <pre><code>mvn clean package -pl fgac-spark-adapter -am -DskipTests
+
+<span class="hljs-comment"># Output fat JAR (Shade plugin appends -spark-fat classifier)</span>
+fgac-spark-adapter/target/fgac-spark-adapter-1.0.0-SNAPSHOT-spark-fat.jar</code></pre>
+
+    <h3>Step 2 — Configure the SparkSession</h3>
+    <pre><code><span class="hljs-comment"># pyspark / Airflow DAG</span>
+spark = (
+    SparkSession.builder
+    .appName(<span class="hljs-string">"banking-etl"</span>)
+
+    <span class="hljs-comment"># 1. Register the FGAC extension FIRST in the list</span>
+    .config(<span class="hljs-string">"spark.sql.extensions"</span>,
+            <span class="hljs-string">"com.banking.lakehouse.fgac.spark.extension.FgacSparkExtension,"</span>
+            <span class="hljs-string">"org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,"</span>
+            <span class="hljs-string">"org.projectnessie.spark.extensions.NessieSparkSessionExtensions"</span>)
+
+    <span class="hljs-comment"># 2. Set the service account identity</span>
+    .config(<span class="hljs-string">"spark.app.current_user"</span>, <span class="hljs-string">"svc_airflow"</span>)
+
+    <span class="hljs-comment"># 3. FGAC framework config (overrides fgac-defaults.properties)</span>
+    .config(<span class="hljs-string">"spark.driver.extraJavaOptions"</span>,
+            <span class="hljs-string">"-Dfgac.nessie.uri=http://nessie:19120/api/v1 "</span>
+            <span class="hljs-string">"-Dfgac.s3a.endpoint=http://minio:9000 "</span>
+            <span class="hljs-string">"-Dfgac.s3a.access.key=minioadmin "</span>
+            <span class="hljs-string">"-Dfgac.s3a.secret.key=minioadmin"</span>)
+
+    <span class="hljs-comment"># 4. Nessie catalog</span>
+    .config(<span class="hljs-string">"spark.sql.catalog.nessie"</span>,         <span class="hljs-string">"org.apache.iceberg.spark.SparkCatalog"</span>)
+    .config(<span class="hljs-string">"spark.sql.catalog.nessie.catalog-impl"</span>, <span class="hljs-string">"org.apache.iceberg.nessie.NessieCatalog"</span>)
+    .config(<span class="hljs-string">"spark.sql.catalog.nessie.uri"</span>,      <span class="hljs-string">"http://nessie:19120/api/v1"</span>)
+    .config(<span class="hljs-string">"spark.sql.catalog.nessie.ref"</span>,      <span class="hljs-string">"main"</span>)
+    .config(<span class="hljs-string">"spark.sql.catalog.nessie.warehouse"</span>, <span class="hljs-string">"s3a://warehouse/"</span>)
+    .config(<span class="hljs-string">"spark.sql.catalog.nessie.authentication.type"</span>, <span class="hljs-string">"NONE"</span>)
+    .getOrCreate()
+)</code></pre>
+
+    <h3>Step 3 — Submit with fat JAR</h3>
+    <pre><code>spark-submit \
+  --jars fgac-spark-adapter-1.0.0-SNAPSHOT-spark-fat.jar \
+  --conf spark.sql.extensions=com.banking.lakehouse.fgac.spark.extension.FgacSparkExtension,... \
+  --conf spark.app.current_user=svc_airflow \
+  your_job.py</code></pre>
+
+    <div class="callout warning">
+      <div class="callout-icon">⚠️</div>
+      <div class="callout-content">
+        <strong>Jar Order Matters</strong>
+        The fat JAR must be on the driver classpath before Iceberg and Nessie JARs. If you use <code>spark.jars.packages</code> as well, add the fat JAR explicitly with <code>--jars</code> to ensure it takes precedence.
+      </div>
+    </div>
+
+    <h3>Java / Scala API (non-Python)</h3>
+    <pre><code><span class="hljs-type">SparkConf</span> conf = new <span class="hljs-type">SparkConf</span>()
+    .set(<span class="hljs-string">"spark.sql.extensions"</span>,
+         <span class="hljs-string">"com.banking.lakehouse.fgac.spark.extension.FgacSparkExtension,"</span>
+         + <span class="hljs-string">"org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions"</span>)
+    .set(<span class="hljs-string">"spark.app.current_user"</span>, <span class="hljs-string">"svc_airflow"</span>);</code></pre>
+  </section>
+
+  <hr>
+
+  <!-- ── 10. NESSIE ──────────────────────────────────────────── -->
+  <section id="nessie">
+    <h2>10 · Project Nessie</h2>
+    <p>Nessie provides <strong>Git-style branching for data</strong>. Every ETL run branches off a domain branch, and merges back after validation — giving you safe, isolated, rollback-capable data ingestion.</p>
+
+    <div class="diagram-wrap">
+      <div class="diagram-title">Nessie Branching Model for Banking Domains</div>
+      <svg viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:700px;display:block;margin:0 auto">
+        <!-- main branch -->
+        <line x1="40" y1="100" x2="660" y2="100" stroke="#1d6b4f" stroke-width="3"/>
+        <text x="40" y="92" font-family="JetBrains Mono,monospace" font-size="10" fill="#1d6b4f" font-weight="600">main</text>
+        <circle cx="120" cy="100" r="6" fill="#1d6b4f"/>
+        <circle cx="300" cy="100" r="6" fill="#1d6b4f"/>
+        <circle cx="480" cy="100" r="6" fill="#1d6b4f"/>
+        <circle cx="640" cy="100" r="6" fill="#1d6b4f"/>
+
+        <!-- transactions/dev -->
+        <line x1="120" y1="100" x2="180" y2="48" stroke="#1a4f82" stroke-width="2"/>
+        <line x1="180" y1="48" x2="280" y2="48" stroke="#1a4f82" stroke-width="2"/>
+        <line x1="280" y1="48" x2="300" y2="100" stroke="#1a4f82" stroke-width="2" stroke-dasharray="4,2"/>
+        <circle cx="180" cy="48" r="5" fill="#1a4f82"/>
+        <circle cx="240" cy="48" r="5" fill="#1a4f82"/>
+        <circle cx="280" cy="48" r="4" fill="none" stroke="#1a4f82" stroke-width="2"/>
+        <text x="195" y="38" font-family="JetBrains Mono,monospace" font-size="9" fill="#1a4f82">transactions/dev</text>
+
+        <!-- ETL run branch -->
+        <line x1="180" y1="48" x2="200" y2="155" stroke="#c4612a" stroke-width="1.5"/>
+        <line x1="200" y1="155" x2="240" y2="155" stroke="#c4612a" stroke-width="1.5"/>
+        <line x1="240" y1="155" x2="240" y2="48" stroke="#c4612a" stroke-width="1.5" stroke-dasharray="3,2"/>
+        <circle cx="200" cy="155" r="4" fill="#c4612a"/>
+        <circle cx="220" cy="155" r="4" fill="#c4612a"/>
+        <text x="175" y="170" font-family="JetBrains Mono,monospace" font-size="8" fill="#c4612a">etl-run-20260316</text>
+
+        <!-- customers/dev -->
+        <line x1="300" y1="100" x2="360" y2="48" stroke="#5a3a8a" stroke-width="2"/>
+        <line x1="360" y1="48" x2="460" y2="48" stroke="#5a3a8a" stroke-width="2"/>
+        <line x1="460" y1="48" x2="480" y2="100" stroke="#5a3a8a" stroke-width="2" stroke-dasharray="4,2"/>
+        <circle cx="360" cy="48" r="5" fill="#5a3a8a"/>
+        <circle cx="420" cy="48" r="5" fill="#5a3a8a"/>
+        <text x="375" y="38" font-family="JetBrains Mono,monospace" font-size="9" fill="#5a3a8a">customers/dev</text>
+
+        <!-- Labels on main -->
+        <text x="112" y="120" font-family="DM Sans,sans-serif" font-size="9" fill="#8a8678">v1</text>
+        <text x="292" y="120" font-family="DM Sans,sans-serif" font-size="9" fill="#8a8678">merge txn</text>
+        <text x="472" y="120" font-family="DM Sans,sans-serif" font-size="9" fill="#8a8678">merge cust</text>
+        <text x="632" y="120" font-family="DM Sans,sans-serif" font-size="9" fill="#8a8678">latest</text>
+      </svg>
+    </div>
+
+    <h3>Docker setup (PoC)</h3>
+    <pre><code><span class="hljs-comment"># docker-compose.yml</span>
+nessie:
+  image: ghcr.io/projectnessie/nessie:<span class="hljs-string">0.104.5</span>
+  ports: [<span class="hljs-string">"19120:19120"</span>]
+  environment:
+    QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/nessie_db
+    QUARKUS_DATASOURCE_USERNAME: nessie
+    QUARKUS_DATASOURCE_PASSWORD: nessie
+    NESSIE_VERSION_STORE_TYPE: JDBC
+  depends_on: [postgres]</code></pre>
+
+    <div class="callout warning">
+      <div class="callout-icon">⚠️</div>
+      <div class="callout-content">
+        <strong>Docker Registry Change</strong>
+        Nessie has moved from <code>docker.io/projectnessie/nessie</code> to <code>ghcr.io/projectnessie/nessie</code>. Recent releases (0.100+) are only on GitHub Container Registry and Quay.io. Update all Compose files accordingly.
+      </div>
+    </div>
+
+    <h3>Nessie SQL Extensions</h3>
+    <pre><code><span class="hljs-comment">-- Create a branch for an ETL run</span>
+<span class="hljs-kw">CREATE</span> BRANCH etl_20260316 <span class="hljs-kw">IN</span> nessie;
+<span class="hljs-kw">USE</span> REFERENCE etl_20260316 <span class="hljs-kw">IN</span> nessie;
+
+<span class="hljs-comment">-- Write data to the branch</span>
+<span class="hljs-kw">INSERT INTO</span> nessie.bronze.raw_transactions ...
+
+<span class="hljs-comment">-- Validate, then merge to main</span>
+MERGE BRANCH etl_20260316 <span class="hljs-kw">INTO</span> main <span class="hljs-kw">IN</span> nessie;
+DROP BRANCH etl_20260316 <span class="hljs-kw">IN</span> nessie;</code></pre>
+  </section>
+
+  <hr>
+
+  <!-- ── 11. HMS ─────────────────────────────────────────────── -->
+  <section id="hms">
+    <h2>11 · Hive Metastore (Dual Catalog)</h2>
+    <p>The PoC writes to <strong>both</strong> Nessie and HMS from the same Spark session. This demonstrates that existing BI tools connecting via HMS can coexist with the Nessie-governed lakehouse.</p>
+
+    <pre><code><span class="hljs-comment"># SparkSession config for dual-write</span>
+.config(<span class="hljs-string">"spark.sql.catalog.hive_catalog"</span>,       <span class="hljs-string">"org.apache.iceberg.spark.SparkCatalog"</span>)
+.config(<span class="hljs-string">"spark.sql.catalog.hive_catalog.type"</span>,  <span class="hljs-string">"hive"</span>)
+.config(<span class="hljs-string">"spark.sql.catalog.hive_catalog.uri"</span>,   <span class="hljs-string">"thrift://hive-metastore:9083"</span>)
+.config(<span class="hljs-string">"spark.sql.catalog.hive_catalog.warehouse"</span>, <span class="hljs-string">"s3a://warehouse/hive/"</span>)</code></pre>
+
+    <pre><code><span class="hljs-comment">-- Write the same data to both catalogs</span>
+<span class="hljs-kw">INSERT INTO</span> nessie.silver.cleansed_transactions <span class="hljs-kw">SELECT</span> * <span class="hljs-kw">FROM</span> staging;
+<span class="hljs-kw">INSERT INTO</span> hive_catalog.silver.cleansed_transactions <span class="hljs-kw">SELECT</span> * <span class="hljs-kw">FROM</span> staging;</code></pre>
+
+    <div class="callout info">
+      <div class="callout-icon">ℹ️</div>
+      <div class="callout-content">
+        <strong>FGAC applies to both catalogs</strong>
+        <code>CatalystEntitlementRule</code> intercepts any <code>DataSourceV2Relation</code> in the plan regardless of which catalog it originated from, as long as it is an Iceberg table.
+      </div>
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- ── 12. BUILD ───────────────────────────────────────────── -->
+  <section id="build">
+    <h2>12 · Build &amp; Package</h2>
+    <pre><code><span class="hljs-comment"># Prerequisites</span>
+java -version   <span class="hljs-comment"># 17 required</span>
+mvn -version    <span class="hljs-comment"># 3.9+ required</span>
+
+<span class="hljs-comment"># Full build with tests</span>
+mvn clean verify
+
+<span class="hljs-comment"># Build spark fat JAR only (skips integration tests)</span>
+mvn clean package -pl fgac-spark-adapter -am
+
+<span class="hljs-comment"># Unit tests only (no external services)</span>
+mvn test -pl fgac-core,fgac-masking,fgac-audit,fgac-policy-store
+
+<span class="hljs-comment"># Resume after failure at a specific module</span>
+mvn clean package -rf :fgac-audit</code></pre>
+
+    <div class="callout tip">
+      <div class="callout-icon">💡</div>
+      <div class="callout-content">
+        <strong>Unicode Arrow Fix</strong>
+        If you copy-paste any source file and see <code>illegal start of type</code> errors pointing to Javadoc blocks, run this to replace <code>→</code> (U+2192) with <code>-&gt;</code> across all Java files:
+        <br><br>
+        <code>find . -name "*.java" | xargs python3 -c "import sys; [open(f,'wb').write(open(f,'rb').read().replace(b'\xe2\x86\x92',b'->')) for f in sys.argv[1:]]"</code>
+      </div>
+    </div>
+
+    <h3>Test Counts (passing)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Module</th><th>Test Class</th><th>Tests</th></tr></thead>
+        <tbody>
+          <tr><td><code>fgac-core</code></td><td>IcebergExpressionBuilderTest</td><td>15</td></tr>
+          <tr><td><code>fgac-core</code></td><td>ColumnPolicyEngineTest</td><td>6</td></tr>
+          <tr><td><code>fgac-core</code></td><td>PolicyCacheManagerTest</td><td>12</td></tr>
+          <tr><td><code>fgac-masking</code></td><td>MaskingFunctionLibraryTest</td><td>—</td></tr>
+          <tr><td><code>fgac-policy-store</code></td><td>JsonPolicyReaderTest</td><td>6</td></tr>
+          <tr><td><code>fgac-audit</code></td><td>AsyncAuditEventEmitterTest</td><td>5</td></tr>
+          <tr><td><strong>Total</strong></td><td></td><td><strong>44+</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- ── 13. CONFIG ──────────────────────────────────────────── -->
+  <section id="config">
+    <h2>13 · Configuration Reference</h2>
+    <p>All properties can be overridden by: <code>-Dfgac.*</code> system properties &gt; environment variables &gt; <code>fgac.properties</code> file at <code>fgac.config.path</code> &gt; <code>fgac-defaults.properties</code> on the classpath.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Property</th><th>Default</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>fgac.nessie.uri</code></td><td><code>http://nessie:19120/api/v1</code></td><td>Nessie REST API v1 endpoint</td></tr>
+          <tr><td><code>fgac.nessie.ref</code></td><td><code>main</code></td><td>Default branch for catalog reads</td></tr>
+          <tr><td><code>fgac.nessie.warehouse</code></td><td><code>s3a://warehouse/</code></td><td>Iceberg warehouse root</td></tr>
+          <tr><td><code>fgac.s3a.endpoint</code></td><td><code>http://minio:9000</code></td><td>MinIO / S3 endpoint</td></tr>
+          <tr><td><code>fgac.s3a.access.key</code></td><td><code>minioadmin</code></td><td>S3A access key</td></tr>
+          <tr><td><code>fgac.s3a.secret.key</code></td><td><code>minioadmin</code></td><td>S3A secret key</td></tr>
+          <tr><td><code>fgac.policy.cache.ttl-minutes</code></td><td><code>5</code></td><td>Policy cache TTL</td></tr>
+          <tr><td><code>fgac.policy.cache.max-size</code></td><td><code>10000</code></td><td>Max cached (role, table) pairs</td></tr>
+          <tr><td><code>fgac.policy.seed.path</code></td><td><code>classpath:/config/policies/seed-policies.json</code></td><td>Seed file location</td></tr>
+          <tr><td><code>fgac.audit.queue-capacity</code></td><td><code>10000</code></td><td>Audit event queue size (drop on full)</td></tr>
+          <tr><td><code>fgac.audit.batch-size</code></td><td><code>200</code></td><td>Events per Iceberg append</td></tr>
+          <tr><td><code>fgac.audit.flush-interval-seconds</code></td><td><code>10</code></td><td>Background drainer interval</td></tr>
+          <tr><td><code>fgac.audit.retention.days</code></td><td><code>2555</code></td><td>7 years — banking compliance</td></tr>
+          <tr><td><code>fgac.identity.spark.conf-key</code></td><td><code>spark.app.current_user</code></td><td>Spark conf key for principal ID</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- ── 14. POLICY MGMT ─────────────────────────────────────── -->
+  <section id="policy-mgmt">
+    <h2>14 · Policy Management at Runtime</h2>
+
+    <h3>Adding a new entitlement via Spark SQL</h3>
+    <pre><code><span class="hljs-kw">INSERT INTO</span> nessie.entitlements.rules
+  (role_name, table_name, row_predicate,
+   allowed_columns, masked_columns, redacted_columns,
+   audit_enabled, description)
+<span class="hljs-kw">VALUES</span> (
+  <span class="hljs-string">'analyst_sg'</span>,
+  <span class="hljs-string">'silver.cleansed_transactions'</span>,
+  <span class="hljs-string">'jurisdiction = ''SG'''</span>,
+  <span class="hljs-string">'["transaction_id","account_number","transaction_amount","jurisdiction"]'</span>,
+  <span class="hljs-string">'{"account_number":"fgac_mask_account_number"}'</span>,
+  <span class="hljs-string">'["data_classification","_ingested_at"]'</span>,
+  true,
+  <span class="hljs-string">'Singapore analyst — masked account numbers'</span>
+);</code></pre>
+
+    <p>The change takes effect within <code>fgac.policy.cache.ttl-minutes</code> (default 5 min). For immediate effect without restarting:</p>
+    <pre><code><span class="hljs-comment">// Java / Spark driver code — force cache invalidation</span>
+FgacCoreContext.getInstance().getPolicyCacheManager().invalidateAll();</code></pre>
+
+    <h3>Revoking access</h3>
+    <pre><code><span class="hljs-kw">DELETE FROM</span> nessie.entitlements.rules
+<span class="hljs-kw">WHERE</span> role_name = <span class="hljs-string">'analyst_sg'</span>
+  <span class="hljs-kw">AND</span> table_name = <span class="hljs-string">'silver.cleansed_transactions'</span>;</code></pre>
+
+    <h3>Time-travel audit query</h3>
+    <pre><code><span class="hljs-comment">-- Who accessed silver.cleansed_transactions in the last 7 days?</span>
+<span class="hljs-kw">SELECT</span>
+  principal_id,
+  outcome,
+  row_filter_applied,
+  COUNT(*) <span class="hljs-kw">AS</span> query_count,
+  MAX(event_ts) <span class="hljs-kw">AS</span> last_access
+<span class="hljs-kw">FROM</span> nessie.audit.query_log
+<span class="hljs-kw">WHERE</span> table_name = <span class="hljs-string">'silver.cleansed_transactions'</span>
+  <span class="hljs-kw">AND</span> event_ts >= UNIX_MILLIS(CURRENT_TIMESTAMP - INTERVAL 7 DAYS)
+<span class="hljs-kw">GROUP BY</span> principal_id, outcome, row_filter_applied
+<span class="hljs-kw">ORDER BY</span> last_access <span class="hljs-kw">DESC</span>;</code></pre>
+  </section>
+
+  <hr>
+
+  <!-- ── 15. VERSIONS ────────────────────────────────────────── -->
+  <section id="versions">
+    <h2>15 · Version Compatibility Matrix</h2>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Component</th><th>PoC Version</th><th>Latest Available</th><th>Upgrade Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Apache Iceberg</td>
+            <td><span class="pill green">1.9.2</span></td>
+            <td>1.10.1</td>
+            <td>1.10.x introduces format V3 — not recommended for PoC</td>
+          </tr>
+          <tr>
+            <td>Apache Spark</td>
+            <td><span class="pill green">3.5.5</span></td>
+            <td>3.5.x / 4.0</td>
+            <td>Spark 4.0 supported by Iceberg 1.10+ only</td>
+          </tr>
+          <tr>
+            <td>Project Nessie</td>
+            <td><span class="pill green">0.104.5</span></td>
+            <td>0.107+</td>
+            <td>Use <code>ghcr.io/projectnessie/nessie</code> Docker registry</td>
+          </tr>
+          <tr>
+            <td>Apache Parquet</td>
+            <td><span class="pill green">1.15.2</span></td>
+            <td>1.15.x</td>
+            <td>Must match Iceberg 1.9.x transitive version</td>
+          </tr>
+          <tr>
+            <td>Jackson</td>
+            <td><span class="pill blue">2.21.1</span></td>
+            <td>2.21.x</td>
+            <td>Use <code>JsonNode.properties()</code> — <code>.fields()</code> deprecated in 2.18+</td>
+          </tr>
+          <tr>
+            <td>Spring Framework</td>
+            <td><span class="pill green">6.1.12</span></td>
+            <td>6.2.x</td>
+            <td>Jakarta namespace (<code>jakarta.annotation-api:2.1.1</code> required explicitly)</td>
+          </tr>
+          <tr>
+            <td>Java</td>
+            <td><span class="pill green">17</span></td>
+            <td>21</td>
+            <td>Nessie 0.107+ requires Java 17 minimum</td>
+          </tr>
+          <tr>
+            <td>Hive Metastore</td>
+            <td><span class="pill blue">3.1.3</span></td>
+            <td>3.1.3</td>
+            <td>Secondary/demo catalog only — Nessie is primary</td>
+          </tr>
+          <tr>
+            <td>Nessie Docker</td>
+            <td><code>ghcr.io/projectnessie/nessie:0.104.5</code></td>
+            <td>0.107+</td>
+            <td>Old <code>docker.io/projectnessie/nessie</code> is no longer updated</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- ── 16. ROLES ───────────────────────────────────────────── -->
+  <section id="roles">
+    <h2>16 · Banking Role Definitions</h2>
+    <p>Pre-configured roles in <code>seed-policies.json</code> for the banking PoC.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Role</th><th>Identity</th><th>Row Access</th><th>Column Masking</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="pill green">data_engineer</span></td>
+            <td><code>svc_airflow</code>, <code>svc_spark</code></td>
+            <td>ALLOW_ALL on all tables</td>
+            <td>None — full access for ETL</td>
+          </tr>
+          <tr>
+            <td><span class="pill purple">compliance_officer</span></td>
+            <td><code>svc_compliance</code></td>
+            <td>ALLOW_ALL rows</td>
+            <td>account_number, email, phone, national_id, date_of_birth</td>
+          </tr>
+          <tr>
+            <td><span class="pill blue">analyst_uk</span></td>
+            <td>UK business users</td>
+            <td><code>jurisdiction = 'UK'</code></td>
+            <td>account_number → last 4 visible</td>
+          </tr>
+          <tr>
+            <td><span class="pill orange">analyst_eu</span></td>
+            <td>EU business users</td>
+            <td><code>jurisdiction IN ('DE','FR','NL','ES','IT','BE','PL')</code></td>
+            <td>account_number → last 4 visible</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Adding a new jurisdiction analyst (e.g. Singapore)</h3>
+    <pre><code><span class="hljs-comment"># 1. Insert into seed file OR directly into the Iceberg table</span>
+{
+  <span class="hljs-key">"roleName"</span>:      <span class="hljs-string">"analyst_sg"</span>,
+  <span class="hljs-key">"tableName"</span>:     <span class="hljs-string">"silver.cleansed_transactions"</span>,
+  <span class="hljs-key">"rowPredicate"</span>:  <span class="hljs-string">"jurisdiction = 'SG'"</span>,
+  <span class="hljs-key">"allowedColumns"</span>: [<span class="hljs-string">"transaction_id"</span>, <span class="hljs-string">"account_number"</span>, <span class="hljs-string">"transaction_amount"</span>,
+                     <span class="hljs-string">"transaction_ts"</span>, <span class="hljs-string">"jurisdiction"</span>],
+  <span class="hljs-key">"maskedColumns"</span>:  { <span class="hljs-string">"account_number"</span>: <span class="hljs-string">"fgac_mask_account_number"</span> },
+  <span class="hljs-key">"auditEnabled"</span>:  <span class="hljs-number">true</span>
+}</code></pre>
+  </section>
+
+  <hr>
+
+  <!-- ── 17. BUILD LOG ───────────────────────────────────────── -->
+  <section id="build-log">
+    <h2>17 · Build Error Resolution History</h2>
+    <p>A chronicle of every compilation issue encountered and resolved during this build — useful reference for upgrading Iceberg or Spark versions in future.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Error</th><th>Root Cause</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><code>NAMESPACE/TABLE_NAME</code> not accessible</td><td>Package-private fields</td><td>Add <code>public</code> modifier</td></tr>
+          <tr><td>2</td><td><code>namespaceExists()</code> not on <code>Catalog</code></td><td>Wrong interface</td><td>Cast to <code>SupportsNamespaces</code></td></tr>
+          <tr><td>3</td><td><code>toDataFile(PartitionSpec, null)</code> removed</td><td>Removed in Iceberg 1.4+</td><td><code>DataFiles.builder().withInputFile().withMetrics().build()</code></td></tr>
+          <tr><td>4</td><td><code>IcebergGenerics</code> not found</td><td>Lives in <code>iceberg-data</code>, not <code>iceberg-core</code></td><td>Add <code>iceberg-data</code> dependency</td></tr>
+          <tr><td>5</td><td><code>jakarta.annotation</code> not found</td><td>Spring 6 uses Jakarta NS, not pulled transitively</td><td>Add <code>jakarta.annotation-api:2.1.1</code> explicitly</td></tr>
+          <tr><td>6</td><td><code>parquet.schema.MessageType</code> not found</td><td>Parquet not pulled transitively by iceberg-parquet</td><td>Add <code>parquet-column</code> explicitly</td></tr>
+          <tr><td>7</td><td>DependencyConvergence failures</td><td>Multiple versions of checker-qual, errorprone, jackson-core</td><td>Pin all to highest version in <code>dependencyManagement</code></td></tr>
+          <tr><td>8</td><td>Unicode <code>→</code> in Javadoc causes compile error</td><td><code>-Werror</code> + javac parsing UTF-8 escape in string context</td><td>Replace all <code>→</code> with <code>-&gt;</code> (ASCII)</td></tr>
+          <tr><td>9</td><td><code>UnnecessaryStubbingException</code> in tests</td><td>Mockito STRICT_STUBS, shared setUp stubs not used by all tests</td><td>Add <code>@MockitoSettings(LENIENT)</code></td></tr>
+          <tr><td>10</td><td><code>scala.PartialFunction</code> not a functional interface</td><td>Scala PartialFunction has multiple abstract methods</td><td>Use <code>AbstractPartialFunction</code></td></tr>
+          <tr><td>11</td><td><code>Filter.apply()</code> / <code>Project.apply()</code> fail from Java</td><td>Scala companion <code>apply</code> not callable from Java</td><td>Use <code>new Filter()</code> / <code>new Project()</code> constructors</td></tr>
+          <tr><td>12</td><td><code>Literal.FalseLiteral()</code> not found</td><td>Scala <code>val</code> on companion object</td><td><code>Literal$.MODULE$.FalseLiteral()</code></td></tr>
+          <tr><td>13</td><td><code>FunctionRegistryBase.FunctionBuilder</code> not found</td><td>Internal Spark API removed in 3.5.x</td><td>Use <code>session.udf().register()</code> public API</td></tr>
+          <tr><td>14</td><td>Redundant cast warning → <code>-Werror</code></td><td><code>(LogicalPlan)</code> cast on <code>transformUp</code> result</td><td>Remove the cast</td></tr>
+          <tr><td>15</td><td><code>GenericParquetWriter.buildWriter()</code> deprecated</td><td>Deprecated in Iceberg 1.7+ (takes MessageType)</td><td>Use <code>buildWriter2()</code> (takes Iceberg Schema)</td></tr>
+          <tr><td>16</td><td>aircompressor convergence (3 versions)</td><td>iceberg-core (0.26), orc-core (0.25), parquet-hadoop (0.21)</td><td>Pin <code>io.airlift:aircompressor:0.26</code></td></tr>
+          <tr><td>17</td><td>parquet-common convergence (1.13.1 vs 1.15.2)</td><td>Iceberg 1.9.2 uses Parquet 1.15.2, old pin was 1.13.1</td><td>Pin all 7 parquet-* artifacts to 1.15.2</td></tr>
+          <tr><td>18</td><td><code>JsonNode.fields()</code> deprecated warning</td><td>Deprecated in Jackson 2.18+</td><td>Use <code>JsonNode.properties()</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <div style="margin-top:80px;padding:32px 0;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+    <div>
+      <span style="font-family:var(--font-serif);font-size:16px;color:var(--text);font-weight:600">iceberg-fgac</span>
+      <span style="color:var(--text-3);font-size:13px;margin-left:12px">v1.0.0-SNAPSHOT</span>
+    </div>
+    <div style="color:var(--text-3);font-size:12px">
+      Iceberg 1.9.2 · Spark 3.5.5 · Nessie 0.104.5 · Java 17 · Spring 6.x
+    </div>
+  </div>
+
+</main>
+</div>
+
+</body>
+</html>
