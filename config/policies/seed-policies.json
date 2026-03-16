@@ -1,0 +1,201 @@
+{
+  "$schema": "https://banking.lakehouse/fgac/policy-schema/v1",
+  "version": "1.0.0",
+  "description": "Banking lakehouse PoC — initial entitlement rules. Edit and re-seed or update via Spark INSERT to nessie.entitlements.rules.",
+  "entitlements": [
+
+    {
+      "comment": "=== SERVICE ACCOUNTS ===",
+      "roleName": "data_engineer",
+      "tableName": "bronze.raw_transactions",
+      "rowPredicate": "ALLOW_ALL",
+      "allowedColumns": [],
+      "maskedColumns": {},
+      "redactedColumns": [],
+      "auditEnabled": true,
+      "description": "Full access to bronze layer for ETL pipeline"
+    },
+    {
+      "roleName": "data_engineer",
+      "tableName": "silver.cleansed_transactions",
+      "rowPredicate": "ALLOW_ALL",
+      "allowedColumns": [],
+      "maskedColumns": {},
+      "redactedColumns": [],
+      "auditEnabled": true,
+      "description": "Full access to silver layer for ETL pipeline"
+    },
+    {
+      "roleName": "data_engineer",
+      "tableName": "silver.cleansed_customers",
+      "rowPredicate": "ALLOW_ALL",
+      "allowedColumns": [],
+      "maskedColumns": {},
+      "redactedColumns": [],
+      "auditEnabled": true,
+      "description": "Full access to silver customers for ETL"
+    },
+    {
+      "roleName": "data_engineer",
+      "tableName": "gold.account_summary",
+      "rowPredicate": "ALLOW_ALL",
+      "allowedColumns": [],
+      "maskedColumns": {},
+      "redactedColumns": [],
+      "auditEnabled": true,
+      "description": "Full access to gold layer for ETL pipeline"
+    },
+    {
+      "roleName": "data_engineer",
+      "tableName": "gold.jurisdiction_risk_report",
+      "rowPredicate": "ALLOW_ALL",
+      "allowedColumns": [],
+      "maskedColumns": {},
+      "redactedColumns": [],
+      "auditEnabled": true,
+      "description": "Full access to risk report for ETL"
+    },
+    {
+      "roleName": "data_engineer",
+      "tableName": "entitlements.rules",
+      "rowPredicate": "ALLOW_ALL",
+      "allowedColumns": [],
+      "maskedColumns": {},
+      "redactedColumns": [],
+      "auditEnabled": true,
+      "description": "Policy table — data engineer can read and write"
+    },
+    {
+      "roleName": "data_engineer",
+      "tableName": "audit.query_log",
+      "rowPredicate": "ALLOW_ALL",
+      "allowedColumns": [],
+      "maskedColumns": {},
+      "redactedColumns": [],
+      "auditEnabled": true,
+      "description": "Full audit log access for engineers"
+    },
+
+    {
+      "comment": "=== COMPLIANCE OFFICER — all rows, all tables, but account number masked ===",
+      "roleName": "compliance_officer",
+      "tableName": "silver.cleansed_transactions",
+      "rowPredicate": "ALLOW_ALL",
+      "allowedColumns": [
+        "transaction_id", "account_number", "transaction_amount",
+        "transaction_ts", "jurisdiction", "merchant_category",
+        "transaction_type", "currency_code", "data_classification",
+        "_ingested_at", "_nessie_ref"
+      ],
+      "maskedColumns": {
+        "account_number": "fgac_mask_account_number"
+      },
+      "redactedColumns": [],
+      "auditEnabled": true,
+      "description": "Compliance: all rows, account number masked to last 4"
+    },
+    {
+      "roleName": "compliance_officer",
+      "tableName": "silver.cleansed_customers",
+      "rowPredicate": "ALLOW_ALL",
+      "allowedColumns": [
+        "customer_id", "customer_name", "email", "phone",
+        "date_of_birth", "national_id", "jurisdiction",
+        "kyc_status", "risk_score", "_ingested_at"
+      ],
+      "maskedColumns": {
+        "email":       "fgac_mask_email",
+        "phone":       "fgac_mask_phone",
+        "national_id": "fgac_redact_national_id",
+        "date_of_birth": "fgac_mask_date_of_birth"
+      },
+      "redactedColumns": [],
+      "auditEnabled": true,
+      "description": "Compliance: all customers, PII masked"
+    },
+    {
+      "roleName": "compliance_officer",
+      "tableName": "audit.query_log",
+      "rowPredicate": "ALLOW_ALL",
+      "allowedColumns": [],
+      "maskedColumns": {},
+      "redactedColumns": [],
+      "auditEnabled": true,
+      "description": "Compliance can query the full audit log"
+    },
+    {
+      "roleName": "compliance_officer",
+      "tableName": "gold.jurisdiction_risk_report",
+      "rowPredicate": "ALLOW_ALL",
+      "allowedColumns": [],
+      "maskedColumns": {},
+      "redactedColumns": [],
+      "auditEnabled": true,
+      "description": "Compliance: full risk report access"
+    },
+
+    {
+      "comment": "=== ANALYST_UK — UK rows only, PII masked ===",
+      "roleName": "analyst_uk",
+      "tableName": "silver.cleansed_transactions",
+      "rowPredicate": "jurisdiction = 'UK'",
+      "allowedColumns": [
+        "transaction_id", "account_number", "transaction_amount",
+        "transaction_ts", "jurisdiction", "merchant_category",
+        "transaction_type", "currency_code"
+      ],
+      "maskedColumns": {
+        "account_number": "fgac_mask_account_number"
+      },
+      "redactedColumns": ["data_classification", "_ingested_at", "_nessie_ref"],
+      "auditEnabled": true,
+      "description": "UK analyst: UK rows only, account number masked to last 4"
+    },
+    {
+      "roleName": "analyst_uk",
+      "tableName": "gold.account_summary",
+      "rowPredicate": "jurisdiction = 'UK'",
+      "allowedColumns": [
+        "masked_account_number", "jurisdiction",
+        "report_date", "total_credits", "total_debits",
+        "net_balance", "transaction_count"
+      ],
+      "maskedColumns": {},
+      "redactedColumns": ["_computed_at", "_nessie_ref"],
+      "auditEnabled": true,
+      "description": "UK analyst: UK gold summary, no internal metadata columns"
+    },
+
+    {
+      "comment": "=== ANALYST_EU — EU jurisdictions, PII masked ===",
+      "roleName": "analyst_eu",
+      "tableName": "silver.cleansed_transactions",
+      "rowPredicate": "jurisdiction IN ('DE','FR','NL','ES','IT','BE','PL')",
+      "allowedColumns": [
+        "transaction_id", "account_number", "transaction_amount",
+        "transaction_ts", "jurisdiction", "merchant_category",
+        "transaction_type", "currency_code"
+      ],
+      "maskedColumns": {
+        "account_number": "fgac_mask_account_number"
+      },
+      "redactedColumns": ["data_classification", "_ingested_at", "_nessie_ref"],
+      "auditEnabled": true,
+      "description": "EU analyst: EU rows only, account number masked"
+    },
+    {
+      "roleName": "analyst_eu",
+      "tableName": "gold.account_summary",
+      "rowPredicate": "jurisdiction IN ('DE','FR','NL','ES','IT','BE','PL')",
+      "allowedColumns": [
+        "masked_account_number", "jurisdiction",
+        "report_date", "total_credits", "total_debits",
+        "net_balance", "transaction_count"
+      ],
+      "maskedColumns": {},
+      "redactedColumns": ["_computed_at", "_nessie_ref"],
+      "auditEnabled": true,
+      "description": "EU analyst: EU gold summary only"
+    }
+  ]
+}

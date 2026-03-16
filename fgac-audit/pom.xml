@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.banking.lakehouse</groupId>
+    <artifactId>iceberg-fgac-parent</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>fgac-audit</artifactId>
+  <name>Iceberg FGAC :: Audit</name>
+  <description>
+    Async non-blocking audit emitter (bounded queue + background writer)
+    and IcebergAuditSink that appends to nessie.audit.query_log.
+  </description>
+
+  <dependencies>
+
+    <dependency>
+      <groupId>com.banking.lakehouse</groupId>
+      <artifactId>fgac-core</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.iceberg</groupId>
+      <artifactId>iceberg-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.iceberg</groupId>
+      <artifactId>iceberg-core</artifactId>
+    </dependency>
+
+    <!-- IcebergAuditSink calls Parquet.write() / GenericParquetWriter -->
+    <dependency>
+      <groupId>org.apache.iceberg</groupId>
+      <artifactId>iceberg-parquet</artifactId>
+    </dependency>
+
+    <!--
+      parquet-column: provides MessageType needed by iceberg-parquet at
+      compile time. Declared explicitly for the same reason as in
+      fgac-policy-store — transitive resolution is unreliable.
+    -->
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-column</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-hadoop</artifactId>
+    </dependency>
+
+    <!-- Spring DI -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-context</artifactId>
+    </dependency>
+
+    <!--
+      @PostConstruct / @PreDestroy used in AsyncAuditEventEmitter
+      and IcebergAuditSink — same jakarta.annotation-api fix.
+    -->
+    <dependency>
+      <groupId>jakarta.annotation</groupId>
+      <artifactId>jakarta.annotation-api</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.datatype</groupId>
+      <artifactId>jackson-datatype-jsr310</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.awaitility</groupId>
+      <artifactId>awaitility</artifactId>
+      <version>4.2.1</version>
+      <scope>test</scope>
+    </dependency>
+
+  </dependencies>
+
+</project>

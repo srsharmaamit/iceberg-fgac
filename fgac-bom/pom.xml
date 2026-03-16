@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.banking.lakehouse</groupId>
+        <artifactId>iceberg-fgac-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+    <artifactId>fgac-bom</artifactId>
+    <packaging>pom</packaging>
+    <name>Iceberg FGAC :: Bill of Materials</name>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.banking.lakehouse</groupId>
+                <artifactId>fgac-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.banking.lakehouse</groupId>
+                <artifactId>fgac-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.banking.lakehouse</groupId>
+                <artifactId>fgac-policy-store</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.banking.lakehouse</groupId>
+                <artifactId>fgac-masking</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.banking.lakehouse</groupId>
+                <artifactId>fgac-audit</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.banking.lakehouse</groupId>
+                <artifactId>fgac-spark-adapter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.banking.lakehouse</groupId>
+                <artifactId>fgac-testing</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>

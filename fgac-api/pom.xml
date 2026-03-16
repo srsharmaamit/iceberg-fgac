@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.banking.lakehouse</groupId>
+        <artifactId>iceberg-fgac-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>fgac-api</artifactId>
+    <name>Iceberg FGAC :: API</name>
+    <description>
+        Pure Java interfaces and immutable domain objects.
+        Zero framework dependencies. This is the only module
+        that engine adapters and future REST/CLI modules need
+        to compile against. Nothing in this module changes
+        when the backing store or engine changes.
+    </description>
+
+    <dependencies>
+        <!-- The only allowed dependency: Jackson annotations for
+             JSON serialisation of domain objects.
+             No framework, no iceberg, no spring. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

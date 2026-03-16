@@ -1,0 +1,48 @@
+{
+  "version": "1.0.0",
+  "description": "Test policy fixture — mirrors seed-policies.json subset",
+  "entitlements": [
+    {
+      "roleName": "data_engineer",
+      "tableName": "silver.cleansed_transactions",
+      "rowPredicate": "ALLOW_ALL",
+      "allowedColumns": [],
+      "maskedColumns": {},
+      "redactedColumns": [],
+      "auditEnabled": true,
+      "description": "Full access for ETL"
+    },
+    {
+      "roleName": "analyst_uk",
+      "tableName": "silver.cleansed_transactions",
+      "rowPredicate": "jurisdiction = 'UK'",
+      "allowedColumns": [
+        "transaction_id", "account_number", "transaction_amount",
+        "transaction_ts", "jurisdiction", "merchant_category",
+        "transaction_type", "currency_code"
+      ],
+      "maskedColumns": {
+        "account_number": "fgac_mask_account_number"
+      },
+      "redactedColumns": ["data_classification", "_ingested_at", "_nessie_ref"],
+      "auditEnabled": true,
+      "description": "UK analyst scope"
+    },
+    {
+      "roleName": "compliance_officer",
+      "tableName": "silver.cleansed_transactions",
+      "rowPredicate": "ALLOW_ALL",
+      "allowedColumns": [
+        "transaction_id", "account_number", "transaction_amount",
+        "transaction_ts", "jurisdiction", "merchant_category",
+        "transaction_type", "currency_code", "data_classification"
+      ],
+      "maskedColumns": {
+        "account_number": "fgac_mask_account_number"
+      },
+      "redactedColumns": [],
+      "auditEnabled": true,
+      "description": "Compliance all rows, masked PII"
+    }
+  ]
+}
