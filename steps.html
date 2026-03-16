@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iceberg-fgac — Production Setup Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #fafaf8; --surface: #ffffff; --surface-2: #f4f3ef;
+  --border: #e8e6df; --border-strong: #d0cdc2;
+  --text: #1a1916; --text-2: #4a4840; --text-3: #8a8678;
+  --accent: #1d6b4f; --accent-light: #e8f4ee; --accent-mid: #2d8c66;
+  --orange: #c4612a; --orange-light: #fdf1ea;
+  --blue: #1a4f82; --blue-light: #e8f0f8;
+  --purple: #5a3a8a; --purple-light: #f0ebf8;
+  --red: #a32b2b; --red-light: #fbeaea;
+  --prod: #7a3800; --prod-light: #fff4e6; --prod-border: #e8a040;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06); --shadow: 0 4px 12px rgba(0,0,0,0.07);
+  --radius: 8px; --radius-lg: 12px;
+  --font-serif: 'Lora', Georgia, serif;
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+html { scroll-behavior: smooth; }
+body { font-family: var(--font-sans); background: var(--bg); color: var(--text); line-height: 1.75; font-size: 15px; }
+
+/* Layout */
+.layout { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 272px; flex-shrink: 0; position: fixed; top: 0; left: 0; bottom: 0;
+  background: var(--surface); border-right: 1px solid var(--border);
+  overflow-y: auto; z-index: 100;
+}
+.sidebar-head {
+  padding: 20px 20px 16px; border-bottom: 1px solid var(--border);
+  background: linear-gradient(135deg,#0f3826,#1d6b4f);
+}
+.sidebar-head .badge {
+  display: inline-block; background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.9);
+  font-family: var(--font-mono); font-size: 10px; padding: 2px 8px; border-radius: 4px; margin-bottom: 8px;
+}
+.sidebar-head h2 { font-family: var(--font-serif); font-size: 15px; color: #fff; font-weight: 600; line-height: 1.3; }
+.sidebar-head p { font-size: 11px; color: rgba(255,255,255,0.65); margin-top: 3px; }
+.nav-group { padding: 8px 0; border-bottom: 1px solid var(--border); }
+.nav-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); padding: 6px 20px 3px; }
+.nav-group a {
+  display: flex; align-items: center; gap: 10px; padding: 5px 20px;
+  font-size: 13px; color: var(--text-2); text-decoration: none;
+  border-left: 2px solid transparent; transition: all 0.15s;
+}
+.nav-group a:hover { color: var(--accent); background: var(--accent-light); border-left-color: var(--accent); }
+.nav-group a .num {
+  width: 20px; height: 20px; border-radius: 50%; background: var(--surface-2);
+  color: var(--text-3); font-size: 10px; font-weight: 700; display: flex;
+  align-items: center; justify-content: center; flex-shrink: 0;
+}
+.nav-group a:hover .num { background: var(--accent); color: #fff; }
+.main { margin-left: 272px; max-width: 980px; padding: 48px 56px 120px; }
+
+/* Typography */
+h1 { font-family: var(--font-serif); font-size: 40px; font-weight: 700; line-height: 1.15; letter-spacing: -0.5px; margin-bottom: 16px; }
+h2 { font-family: var(--font-serif); font-size: 28px; font-weight: 600; margin-top: 72px; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 2px solid var(--border); color: var(--text); scroll-margin-top: 20px; }
+h2 .step-badge { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: var(--accent); color: #fff; border-radius: 50%; font-family: var(--font-sans); font-size: 15px; font-weight: 700; margin-right: 12px; vertical-align: middle; flex-shrink: 0; }
+h3 { font-family: var(--font-sans); font-size: 17px; font-weight: 600; margin-top: 36px; margin-bottom: 10px; color: var(--text); }
+h3 .sub { font-size: 13px; color: var(--text-3); font-weight: 400; margin-left: 8px; }
+h4 { font-size: 13px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 20px; margin-bottom: 6px; }
+p { margin-bottom: 12px; color: var(--text-2); }
+strong { color: var(--text); font-weight: 600; }
+ul, ol { padding-left: 22px; margin-bottom: 12px; color: var(--text-2); }
+li { margin-bottom: 5px; }
+section { scroll-margin-top: 20px; }
+
+/* Hero */
+.hero {
+  background: linear-gradient(135deg,#0f3826 0%,#1d6b4f 55%,#2d8c66 100%);
+  border-radius: var(--radius-lg); padding: 48px; margin-bottom: 48px; position: relative; overflow: hidden;
+}
+.hero::before { content:''; position:absolute; top:-50px; right:-50px; width:300px; height:300px; background:radial-gradient(circle,rgba(255,255,255,0.05) 0%,transparent 70%); border-radius:50%; }
+.hero h1 { color:#fff; font-size:34px; margin-bottom:10px; }
+.hero p { color:rgba(255,255,255,0.75); font-size:16px; max-width:600px; margin-bottom:20px; }
+.hero-tags { display:flex; gap:8px; flex-wrap:wrap; }
+.hero-tag { background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.2); color:rgba(255,255,255,0.9); font-size:11px; font-family:var(--font-mono); padding:3px 10px; border-radius:4px; }
+
+/* Step overview cards */
+.step-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:10px; margin:24px 0 40px; }
+.step-card {
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  padding:14px 16px; box-shadow:var(--shadow-sm); transition:all 0.15s; text-decoration:none;
+  display:block;
+}
+.step-card:hover { box-shadow:var(--shadow); transform:translateY(-2px); border-color:var(--accent); }
+.step-card .n { font-family:var(--font-mono); font-size:10px; color:var(--accent); margin-bottom:6px; }
+.step-card strong { font-size:13px; color:var(--text); display:block; margin-bottom:3px; }
+.step-card span { font-size:12px; color:var(--text-3); }
+
+/* Code */
+code {
+  font-family:var(--font-mono); font-size:12.5px; background:var(--surface-2);
+  border:1px solid var(--border); padding:2px 6px; border-radius:4px; color:var(--accent);
+}
+pre {
+  background:#18171a; border-radius:var(--radius); padding:20px 24px;
+  overflow-x:auto; margin:16px 0; box-shadow:var(--shadow); position:relative;
+}
+pre code { background:none; border:none; padding:0; color:#d4d0c4; font-size:12.5px; line-height:1.75; }
+.c { color:#6a6658; } .k { color:#e8a060; } .s { color:#e8c87a; } .t { color:#82b8d8; }
+.g { color:#7ec8a0; } .cm { color:#a8e090; }
+
+/* Callouts */
+.callout { border-radius:var(--radius); padding:14px 18px; margin:20px 0; border-left:3px solid; display:flex; gap:12px; }
+.callout-body p { margin:0; font-size:14px; color:var(--text-2); }
+.callout-body strong { display:block; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
+.info  { background:var(--blue-light);   border-color:var(--blue);   }
+.warn  { background:var(--orange-light); border-color:var(--orange); }
+.ok    { background:var(--accent-light); border-color:var(--accent); }
+.tip   { background:var(--purple-light); border-color:var(--purple); }
+
+/* PROD callout — special golden highlight */
+.prod {
+  background:var(--prod-light); border:1px solid var(--prod-border);
+  border-left:4px solid var(--prod-border); border-radius:var(--radius);
+  padding:16px 20px; margin:20px 0;
+}
+.prod-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.prod-head .icon { font-size:16px; }
+.prod-head strong { font-size:12px; text-transform:uppercase; letter-spacing:0.8px; color:var(--prod); font-weight:700; }
+.prod p { font-size:14px; color:#5a3800; margin:0; }
+.prod code { background:rgba(122,56,0,0.08); border-color:var(--prod-border); color:var(--prod); }
+
+/* Tables */
+.table-wrap { overflow-x:auto; margin:20px 0; border-radius:var(--radius); border:1px solid var(--border); box-shadow:var(--shadow-sm); }
+table { width:100%; border-collapse:collapse; background:var(--surface); }
+th { background:var(--surface-2); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-3); padding:11px 15px; text-align:left; border-bottom:1px solid var(--border); }
+td { padding:10px 15px; font-size:13.5px; border-bottom:1px solid var(--border); color:var(--text-2); vertical-align:top; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:#fafaf5; }
+
+/* Checklist */
+.checklist { list-style:none; padding:0; margin:16px 0; }
+.checklist li { display:flex; align-items:flex-start; gap:10px; padding:8px 12px; background:var(--surface); border:1px solid var(--border); border-radius:6px; margin-bottom:6px; font-size:14px; box-shadow:var(--shadow-sm); }
+.checklist li::before { content:'✓'; color:var(--accent); font-weight:700; flex-shrink:0; margin-top:2px; }
+
+/* File tree */
+.filetree { background:#18171a; border-radius:var(--radius); padding:20px 24px; margin:16px 0; font-family:var(--font-mono); font-size:12.5px; line-height:1.9; color:#d4d0c4; overflow-x:auto; }
+.filetree .dir { color:#82b8d8; }
+.filetree .file { color:#d4d0c4; }
+.filetree .note { color:#6a6658; }
+
+/* Step done box */
+.done-box { background:var(--accent-light); border:1px solid #b8ddc8; border-radius:var(--radius); padding:16px 20px; margin-top:36px; }
+.done-box strong { color:var(--accent); font-size:13px; }
+.done-box ul { margin:8px 0 0; padding-left:20px; }
+.done-box li { font-size:13px; color:#2a6a4a; margin-bottom:4px; }
+
+/* Inline badge */
+.badge { display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:12px; }
+.b-green  { background:var(--accent-light); color:var(--accent); }
+.b-blue   { background:var(--blue-light);   color:var(--blue); }
+.b-orange { background:var(--orange-light); color:var(--orange); }
+
+hr { border:none; border-top:1px solid var(--border); margin:64px 0 0; }
+@media(max-width:900px) { .sidebar{display:none;} .main{margin-left:0;padding:28px 20px 80px;} h1{font-size:28px;} }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-head">
+    <span class="badge">Setup Guide</span>
+    <h2>iceberg-fgac</h2>
+    <p>Local Dev → Production</p>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Overview</div>
+    <a href="#overview"><span class="num">0</span>Prerequisites &amp; Stack</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Infrastructure</div>
+    <a href="#step1"><span class="num">1</span>Verify Infrastructure</a>
+    <a href="#step2"><span class="num">2</span>MinIO Buckets</a>
+    <a href="#step3"><span class="num">3</span>Nessie Branches</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">FGAC Setup</div>
+    <a href="#step4"><span class="num">4</span>Place the Fat JAR</a>
+    <a href="#step5"><span class="num">5</span>Define Policies</a>
+    <a href="#step6"><span class="num">6</span>Bootstrap Policy Store</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Spark Integration</div>
+    <a href="#step7"><span class="num">7</span>Configure Spark</a>
+    <a href="#step8"><span class="num">8</span>Validate FGAC</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Airflow &amp; ETL</div>
+    <a href="#step9"><span class="num">9</span>Write ETL DAG</a>
+    <a href="#step10"><span class="num">10</span>Run End-to-End</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Operations</div>
+    <a href="#step11"><span class="num">11</span>Query Audit Log</a>
+    <a href="#step12"><span class="num">12</span>Manage Policies</a>
+    <a href="#step13"><span class="num">13</span>Monitor &amp; Operate</a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+<div class="hero">
+  <h1>iceberg-fgac Setup Guide</h1>
+  <p>Complete step-by-step playbook: local Docker development to production deployment. Every step includes production configuration callouts so you know exactly what changes when you go live.</p>
+  <div class="hero-tags">
+    <span class="hero-tag">Iceberg 1.9.2</span>
+    <span class="hero-tag">Spark 3.5.5</span>
+    <span class="hero-tag">Nessie 0.104.5</span>
+    <span class="hero-tag">Airflow 3.x</span>
+    <span class="hero-tag">MinIO / NetApp S3</span>
+    <span class="hero-tag">Java 17</span>
+  </div>
+</div>
+
+<!-- OVERVIEW -->
+<section id="overview">
+<h2>All Steps at a Glance</h2>
+<div class="step-cards">
+  <a class="step-card" href="#step1"><div class="n">STEP 01</div><strong>Verify Infrastructure</strong><span>Health check every service</span></a>
+  <a class="step-card" href="#step2"><div class="n">STEP 02</div><strong>MinIO Buckets</strong><span>Create warehouse storage</span></a>
+  <a class="step-card" href="#step3"><div class="n">STEP 03</div><strong>Nessie Branches</strong><span>Namespaces + branch strategy</span></a>
+  <a class="step-card" href="#step4"><div class="n">STEP 04</div><strong>Place the Fat JAR</strong><span>Deploy FGAC to Spark</span></a>
+  <a class="step-card" href="#step5"><div class="n">STEP 05</div><strong>Define Policies</strong><span>Write seed-policies.json</span></a>
+  <a class="step-card" href="#step6"><div class="n">STEP 06</div><strong>Bootstrap Policy Store</strong><span>Seed Iceberg entitlements table</span></a>
+  <a class="step-card" href="#step7"><div class="n">STEP 07</div><strong>Configure Spark</strong><span>spark-defaults + extensions</span></a>
+  <a class="step-card" href="#step8"><div class="n">STEP 08</div><strong>Validate FGAC</strong><span>Test queries as each role</span></a>
+  <a class="step-card" href="#step9"><div class="n">STEP 09</div><strong>Write ETL DAG</strong><span>Bronze → Silver → Gold</span></a>
+  <a class="step-card" href="#step10"><div class="n">STEP 10</div><strong>Run End-to-End</strong><span>Trigger and verify the DAG</span></a>
+  <a class="step-card" href="#step11"><div class="n">STEP 11</div><strong>Query Audit Log</strong><span>Compliance reporting</span></a>
+  <a class="step-card" href="#step12"><div class="n">STEP 12</div><strong>Manage Policies</strong><span>Add/modify at runtime</span></a>
+  <a class="step-card" href="#step13"><div class="n">STEP 13</div><strong>Monitor &amp; Operate</strong><span>Health, tuning, alerting</span></a>
+</div>
+
+<h3>Prerequisites</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Component</th><th>Local (Docker)</th><th>Version</th><th>Port</th></tr></thead>
+<tbody>
+<tr><td>Apache Spark</td><td>docker container</td><td>3.5.5</td><td>7077 (master), 8080 (UI)</td></tr>
+<tr><td>Project Nessie</td><td>ghcr.io/projectnessie/nessie</td><td>0.104.5</td><td>19120</td></tr>
+<tr><td>MinIO</td><td>minio/minio</td><td>latest</td><td>9000 (API), 9001 (UI)</td></tr>
+<tr><td>PostgreSQL</td><td>postgres:15</td><td>15</td><td>5432</td></tr>
+<tr><td>Apache Airflow</td><td>apache/airflow</td><td>3.x</td><td>8080 / 8081</td></tr>
+<tr><td>Hive Metastore</td><td>custom image (optional)</td><td>3.1.3</td><td>9083</td></tr>
+<tr><td>Java</td><td>host machine</td><td>17</td><td>—</td></tr>
+<tr><td>FGAC fat JAR</td><td>fgac-spark-adapter-1.0.0-SNAPSHOT-spark-fat.jar</td><td>1.0.0</td><td>—</td></tr>
+</tbody>
+</table></div>
+
+<div class="prod">
+<div class="prod-head"><span class="icon">🏭</span><strong>Production Stack Differences</strong></div>
+<p>In production: MinIO is replaced by <strong>NetApp StorageGRID</strong> (S3-compatible). PostgreSQL is a managed RDS or on-prem HA cluster. Spark runs on a dedicated cluster (Kubernetes or YARN). Airflow runs on a managed platform. Nessie connects to the same PostgreSQL cluster but in its own schema. Everything else stays the same.</p>
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════ STEP 1 ═══════════════════════════════════════ -->
+<hr><section id="step1">
+<h2><span class="step-badge">1</span>Verify Infrastructure Health</h2>
+<p>Before touching Spark, Nessie, or any FGAC configuration, every service must be running and able to reach the others. A silent misconfiguration here creates cryptic errors much later.</p>
+
+<h3>1.1 — Check all containers are running</h3>
+<pre><code><span class="c"># All containers should show "Up" status</span>
+docker ps --format <span class="s">"table {{.Names}}\t{{.Status}}\t{{.Ports}}"</span></code></pre>
+<div class="table-wrap"><table>
+<thead><tr><th>Container</th><th>Expected Status</th><th>Key Ports</th></tr></thead>
+<tbody>
+<tr><td><code>nessie</code></td><td>Up</td><td>19120:19120</td></tr>
+<tr><td><code>minio</code></td><td>Up</td><td>9000:9000, 9001:9001</td></tr>
+<tr><td><code>postgres</code></td><td>Up</td><td>5432:5432</td></tr>
+<tr><td><code>spark-master</code></td><td>Up</td><td>7077:7077, 8080:8080</td></tr>
+<tr><td><code>airflow-webserver</code></td><td>Up</td><td>8081:8080</td></tr>
+<tr><td><code>hive-metastore</code></td><td>Up (optional)</td><td>9083:9083</td></tr>
+</tbody>
+</table></div>
+<p>If anything is not <strong>Up</strong>, check logs first: <code>docker logs &lt;container_name&gt; --tail 50</code></p>
+
+<h3>1.2 — Verify Nessie is healthy</h3>
+<pre><code><span class="c"># Should return JSON with defaultBranch: "main"</span>
+curl -s http://localhost:19120/api/v1/config | python3 -m json.tool
+
+<span class="c"># Verify main branch exists</span>
+curl -s http://localhost:19120/api/v1/trees/tree/main | python3 -m json.tool</code></pre>
+
+<h3>1.3 — Verify MinIO is reachable</h3>
+<pre><code><span class="c"># Health check — returns empty 200 on success</span>
+curl -s -o /dev/null -w <span class="s">"%{http_code}"</span> http://localhost:9000/minio/health/live
+<span class="c"># Open console in browser</span>
+open http://localhost:9001  <span class="c"># login: minioadmin / minioadmin</span></code></pre>
+
+<h3>1.4 — Verify PostgreSQL is accepting connections</h3>
+<pre><code>docker exec -it postgres psql -U postgres -c <span class="s">"\l"</span>
+<span class="c"># Must see: airflow_db, nessie_db (create if missing)</span>
+docker exec -it postgres psql -U postgres -c <span class="s">"CREATE DATABASE nessie_db;"</span>
+docker exec -it postgres psql -U postgres -c <span class="s">"CREATE DATABASE airflow_db;"</span></code></pre>
+
+<h3>1.5 — Verify Spark master UI</h3>
+<pre><code><span class="c"># Open browser — should show Status: ALIVE + at least 1 worker</span>
+open http://localhost:8080</code></pre>
+
+<h3>1.6 — End-to-end connectivity: Spark → Nessie + MinIO</h3>
+<pre><code><span class="c"># Run from inside the Spark container</span>
+docker exec -it spark-master bash -c <span class="s">"curl -s http://nessie:19120/api/v1/config | head -3"</span>
+docker exec -it spark-master bash -c <span class="s">"curl -s -o /dev/null -w '%{http_code}' http://minio:9000/minio/health/live"</span>
+<span class="c"># Both must succeed (200). If nessie:19120 fails, check Docker network — all containers must share the same network.</span></code></pre>
+
+<div class="prod">
+<div class="prod-head"><span class="icon">🏭</span><strong>Production Checks</strong></div>
+<p>Replace <code>localhost</code> with internal hostnames. Add TLS checks: <code>curl -sk https://nessie.internal:19120/api/v1/config</code>. Verify firewall rules allow Spark workers to reach both Nessie and NetApp S3 on the correct ports. Add these checks to your runbook and monitoring.</p>
+</div>
+
+<div class="done-box"><strong>✅ Step 1 complete when:</strong><ul>
+<li>All containers show <code>Up</code> in <code>docker ps</code></li>
+<li><code>curl http://localhost:19120/api/v1/config</code> returns JSON</li>
+<li>Spark master UI shows at least one live worker</li>
+<li>Spark container can reach both <code>nessie:19120</code> and <code>minio:9000</code></li>
+</ul></div>
+</section>
+
+<!-- ═══════════════════════════════════════ STEP 2 ═══════════════════════════════════════ -->
+<hr><section id="step2">
+<h2><span class="step-badge">2</span>Create MinIO Bucket Structure</h2>
+<p>Iceberg writes all Parquet data files, manifests, and metadata JSON to MinIO. The bucket must exist before Nessie or Spark can create any table.</p>
+
+<h3>2.1 — Understand the warehouse layout</h3>
+<div class="filetree">
+<span class="dir">s3a://warehouse/</span>
+├── <span class="dir">nessie/</span>                   <span class="note"># Nessie catalog warehouse root</span>
+│   ├── <span class="dir">bronze/raw_transactions/</span>
+│   │   ├── <span class="dir">data/</span>              <span class="note"># Parquet files (created by Iceberg)</span>
+│   │   └── <span class="dir">metadata/</span>          <span class="note"># JSON + manifests (created by Iceberg)</span>
+│   ├── <span class="dir">silver/</span>
+│   │   ├── <span class="dir">cleansed_transactions/</span>
+│   │   └── <span class="dir">cleansed_customers/</span>
+│   ├── <span class="dir">gold/</span>
+│   │   ├── <span class="dir">account_summary/</span>
+│   │   └── <span class="dir">jurisdiction_risk_report/</span>
+│   ├── <span class="dir">entitlements/rules/</span>    <span class="note"># FGAC policy table</span>
+│   └── <span class="dir">audit/query_log/</span>       <span class="note"># Audit log table</span>
+└── <span class="dir">hive/</span>                     <span class="note"># HMS secondary catalog (optional)</span>
+</div>
+<div class="callout info"><span>ℹ️</span><div class="callout-body"><p>You only need to create the top-level <code>warehouse</code> bucket. Iceberg creates <code>data/</code> and <code>metadata/</code> subfolders automatically on first write.</p></div></div>
+
+<h3>2.2 — Create bucket via MinIO Console (UI)</h3>
+<ol>
+<li>Open <strong>http://localhost:9001</strong> → login <code>minioadmin / minioadmin</code></li>
+<li>Click <strong>Buckets</strong> → <strong>Create Bucket</strong></li>
+<li>Name: <code>warehouse</code> — leave versioning OFF</li>
+<li>Click <strong>Create Bucket</strong></li>
+<li>Repeat with name <code>hive-warehouse</code> if using HMS</li>
+</ol>
+
+<h3>2.3 — Or via MinIO Client CLI</h3>
+<pre><code>docker exec -it minio sh -c <span class="s">"
+  mc alias set local http://localhost:9000 minioadmin minioadmin
+  mc mb local/warehouse
+  mc mb local/hive-warehouse
+  mc ls local
+"</span></code></pre>
+
+<h3>2.4 — Verify Spark can read/write S3A</h3>
+<pre><code><span class="c"># Drop a marker file to confirm write access</span>
+docker exec -it minio sh -c <span class="s">"
+  mc alias set local http://localhost:9000 minioadmin minioadmin
+  echo 'FGAC warehouse ready' | mc pipe local/warehouse/.fgac-ready
+  mc cat local/warehouse/.fgac-ready
+"</span>
+
+<span class="c"># From inside spark container — test S3A read</span>
+docker exec -it spark-master bash
+<span class="c"># Then in the container:</span>
+$SPARK_HOME/bin/spark-shell \
+  --conf spark.hadoop.fs.s3a.endpoint=http://minio:9000 \
+  --conf spark.hadoop.fs.s3a.access.key=minioadmin \
+  --conf spark.hadoop.fs.s3a.secret.key=minioadmin \
+  --conf spark.hadoop.fs.s3a.path.style.access=true \
+  --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem \
+  --conf spark.hadoop.fs.s3a.aws.credentials.provider=org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider
+
+<span class="c"># In the Spark shell:</span>
+spark.read.text(<span class="s">"s3a://warehouse/.fgac-ready"</span>).show()
+<span class="c"># Should print: FGAC warehouse ready</span>
+:quit</code></pre>
+
+<div class="prod">
+<div class="prod-head"><span class="icon">🏭</span><strong>Production — NetApp StorageGRID</strong></div>
+<p>Replace <code>http://minio:9000</code> with your NetApp S3 gateway endpoint (e.g. <code>https://s3.netapp.internal</code>). Create a <strong>dedicated IAM service account</strong> with a scoped access key — do not use admin credentials. Grant the service account <code>s3:GetObject</code>, <code>s3:PutObject</code>, <code>s3:DeleteObject</code>, <code>s3:ListBucket</code> on the <code>warehouse</code> bucket only. NetApp ACLs then enforce object-level isolation; FGAC enforces query-level isolation on top.</p>
+</div>
+
+<div class="done-box"><strong>✅ Step 2 complete when:</strong><ul>
+<li>MinIO console shows <code>warehouse</code> bucket at <code>http://localhost:9001</code></li>
+<li><code>mc cat local/warehouse/.fgac-ready</code> prints the marker text</li>
+<li>Spark shell can <code>spark.read.text("s3a://warehouse/.fgac-ready").show()</code> without errors</li>
+</ul></div>
+</section>
+
+<!-- ═══════════════════════════════════════ STEP 3 ═══════════════════════════════════════ -->
+<hr><section id="step3">
+<h2><span class="step-badge">3</span>Set Up Nessie Namespaces and Branches</h2>
+<p>Nessie is your versioned data catalog. Branches work exactly like Git — <code>main</code> is production, domain branches are staging lanes, and per-run branches are isolated write zones.</p>
+
+<h3>3.1 — Branch strategy diagram</h3>
+<div class="filetree">
+main                          <span class="note"># production — never written to directly</span>
+├── transactions/main         <span class="note"># transactions staging</span>
+│   └── transactions/dev      <span class="note"># transactions active dev</span>
+│       └── etl-txn-20260316  <span class="note"># per-run branch (Airflow creates this)</span>
+└── customers/main
+    └── customers/dev
+        └── etl-cust-20260316
+</div>
+
+<h3>3.2 — Create branches via Nessie REST API</h3>
+<pre><code>NESSIE=http://localhost:19120/api/v1
+
+<span class="c"># Get main branch HEAD hash</span>
+MAIN_HASH=$(curl -s $NESSIE/trees/tree/main \
+  | python3 -c <span class="s">"import sys,json; print(json.load(sys.stdin)['hash'])"</span>)
+echo <span class="s">"main HEAD: $MAIN_HASH"</span>
+
+<span class="c"># Create all domain branches</span>
+for BRANCH in transactions/main transactions/dev customers/main customers/dev; do
+  curl -s -X POST <span class="s">"$NESSIE/trees/tree"</span> \
+    -H <span class="s">"Content-Type: application/json"</span> \
+    -d <span class="s">"{\"name\": \"$BRANCH\", \"type\": \"BRANCH\", \"hash\": \"$MAIN_HASH\"}"</span> \
+    | python3 -c <span class="s">"import sys,json; d=json.load(sys.stdin); print(f'  Created: {d[\"name\"]}')"</span>
+done</code></pre>
+
+<h3>3.3 — Verify all branches</h3>
+<pre><code>curl -s http://localhost:19120/api/v1/trees \
+  | python3 -c <span class="s">"
+import sys, json
+for t in json.load(sys.stdin)['references']:
+    print(f'  {t[\"type\"]:8}  {t[\"name\"]:30}  {t[\"hash\"][:12]}')
+"</span></code></pre>
+
+<h3>3.4 — Create namespaces via Spark SQL <span class="sub">save as setup_namespaces.py</span></h3>
+<pre><code><span class="c"># setup_namespaces.py — run once</span>
+from pyspark.sql import SparkSession
+
+spark = (SparkSession.builder.appName(<span class="s">"nessie-setup"</span>)
+  .config(<span class="s">"spark.sql.extensions"</span>,
+          <span class="s">"org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,"</span>
+          <span class="s">"org.projectnessie.spark.extensions.NessieSparkSessionExtensions"</span>)
+  .config(<span class="s">"spark.sql.catalog.nessie"</span>,              <span class="s">"org.apache.iceberg.spark.SparkCatalog"</span>)
+  .config(<span class="s">"spark.sql.catalog.nessie.catalog-impl"</span>,  <span class="s">"org.apache.iceberg.nessie.NessieCatalog"</span>)
+  .config(<span class="s">"spark.sql.catalog.nessie.uri"</span>,           <span class="s">"http://nessie:19120/api/v1"</span>)
+  .config(<span class="s">"spark.sql.catalog.nessie.ref"</span>,           <span class="s">"main"</span>)
+  .config(<span class="s">"spark.sql.catalog.nessie.warehouse"</span>,      <span class="s">"s3a://warehouse/"</span>)
+  .config(<span class="s">"spark.sql.catalog.nessie.authentication.type"</span>, <span class="s">"NONE"</span>)
+  .config(<span class="s">"spark.hadoop.fs.s3a.endpoint"</span>,            <span class="s">"http://minio:9000"</span>)
+  .config(<span class="s">"spark.hadoop.fs.s3a.access.key"</span>,          <span class="s">"minioadmin"</span>)
+  .config(<span class="s">"spark.hadoop.fs.s3a.secret.key"</span>,          <span class="s">"minioadmin"</span>)
+  .config(<span class="s">"spark.hadoop.fs.s3a.path.style.access"</span>,   <span class="s">"true"</span>)
+  .config(<span class="s">"spark.hadoop.fs.s3a.impl"</span>, <span class="s">"org.apache.hadoop.fs.s3a.S3AFileSystem"</span>)
+  .getOrCreate())
+
+for ns in [<span class="s">"bronze"</span>, <span class="s">"silver"</span>, <span class="s">"gold"</span>, <span class="s">"entitlements"</span>, <span class="s">"audit"</span>]:
+    spark.sql(f<span class="s">"CREATE NAMESPACE IF NOT EXISTS nessie.{ns}"</span>)
+    print(f<span class="s">"  ✓ nessie.{ns}"</span>)
+
+spark.sql(<span class="s">"SHOW NAMESPACES IN nessie"</span>).show()
+spark.stop()</code></pre>
+
+<pre><code><span class="c"># Submit the setup script</span>
+docker exec -it spark-master spark-submit \
+  --master spark://spark-master:7077 \
+  /opt/spark/jobs/setup_namespaces.py</code></pre>
+
+<div class="prod">
+<div class="prod-head"><span class="icon">🏭</span><strong>Production — Branch Protection</strong></div>
+<p>Document and enforce: ETL jobs <strong>never write directly to <code>main</code></strong>. Every Airflow DAG must create a per-run branch, write to it, validate, and merge. Periodically promote <code>domain/dev → domain/main → main</code> after QA sign-off. In a future Nessie version, role-based branch protection will be enforceable via the API.</p>
+</div>
+
+<div class="done-box"><strong>✅ Step 3 complete when:</strong><ul>
+<li>Nessie <code>/api/v1/trees</code> shows <code>main</code>, <code>transactions/dev</code>, <code>customers/dev</code> (and main variants)</li>
+<li><code>SHOW NAMESPACES IN nessie</code> returns <code>bronze</code>, <code>silver</code>, <code>gold</code>, <code>entitlements</code>, <code>audit</code></li>
+</ul></div>
+</section>
+
+<!-- ═══════════════════════════════════════ STEP 4 ═══════════════════════════════════════ -->
+<hr><section id="step4">
+<h2><span class="step-badge">4</span>Place the FGAC Fat JAR</h2>
+<p>The fat JAR contains the FGAC framework plus all its dependencies (Spring, Guava, Iceberg Java API). It must be on the Spark <strong>driver classpath</strong> before any job referencing the FGAC extension can run.</p>
+
+<h3>4.1 — Copy JAR into the Spark container</h3>
+<pre><code><span class="c"># Copy from your host machine into the Spark master container</span>
+docker cp fgac-spark-adapter-1.0.0-SNAPSHOT-spark-fat.jar \
+  spark-master:/opt/spark/jars/fgac-spark-adapter.jar
+
+<span class="c"># Verify it landed correctly</span>
+docker exec -it spark-master ls -lh /opt/spark/jars/fgac-spark-adapter.jar</code></pre>
+
+<div class="callout tip"><span>💡</span><div class="callout-body"><p>Placing the JAR in <code>/opt/spark/jars/</code> makes it available to ALL jobs on this master automatically. No need to pass <code>--jars</code> on every <code>spark-submit</code> call.</p></div></div>
+
+<h3>4.2 — Also copy the seed policies file</h3>
+<pre><code><span class="c"># Copy your seed-policies.json into the container so SeedPolicyLoader can find it</span>
+docker cp config/policies/seed-policies.json \
+  spark-master:/opt/spark/conf/seed-policies.json
+
+<span class="c"># Verify</span>
+docker exec -it spark-master cat /opt/spark/conf/seed-policies.json | head -20</code></pre>
+
+<h3>4.3 — Verify the JAR is valid</h3>
+<pre><code><span class="c"># Check the FGAC extension class exists inside the JAR</span>
+docker exec -it spark-master jar -tf /opt/spark/jars/fgac-spark-adapter.jar \
+  | grep FgacSparkExtension
+<span class="c"># Expected: com/banking/lakehouse/fgac/spark/extension/FgacSparkExtension.class</span></code></pre>
+
+<div class="prod">
+<div class="prod-head"><span class="icon">🏭</span><strong>Production — JAR Distribution</strong></div>
+<p>In production, do not <code>docker cp</code> manually. Instead: publish the fat JAR to a Maven repository (Nexus/Artifactory) or object storage. In your Spark cluster startup script, pull the JAR from that location. Use versioned JAR names (<code>fgac-spark-adapter-1.0.0.jar</code>) so rollback is a one-line config change. All Spark worker nodes need the JAR too if using cluster mode — add it to your cluster provisioning scripts.</p>
+</div>
+
+<div class="done-box"><strong>✅ Step 4 complete when:</strong><ul>
+<li><code>ls -lh /opt/spark/jars/fgac-spark-adapter.jar</code> shows the file (~80-100 MB)</li>
+<li><code>jar -tf</code> shows <code>FgacSparkExtension.class</code> inside</li>
+<li><code>seed-policies.json</code> is in <code>/opt/spark/conf/</code></li>
+</ul></div>
+</section>
+
+<!-- ═══════════════════════════════════════ STEP 5 ═══════════════════════════════════════ -->
+<hr><section id="step5">
+<h2><span class="step-badge">5</span>Define Your Entitlement Policies</h2>
+<p>Policies live in <code>seed-policies.json</code>. This file defines <strong>who</strong> can access <strong>which table</strong> with <strong>what row filter</strong> and <strong>which columns masked</strong>. On first Spark startup, <code>SeedPolicyLoader</code> reads this file and creates the <code>nessie.entitlements.rules</code> Iceberg table.</p>
+
+<h3>5.1 — Policy file structure</h3>
+<pre><code><span class="c">// /opt/spark/conf/seed-policies.json</span>
+{
+  <span class="g">"version"</span>: <span class="s">"1.0.0"</span>,
+  <span class="g">"description"</span>: <span class="s">"Banking lakehouse entitlement rules"</span>,
+  <span class="g">"entitlements"</span>: [
+
+    {
+      <span class="c">// Data engineers — full unrestricted access for ETL</span>
+      <span class="g">"roleName"</span>:       <span class="s">"data_engineer"</span>,
+      <span class="g">"tableName"</span>:      <span class="s">"silver.cleansed_transactions"</span>,
+      <span class="g">"rowPredicate"</span>:   <span class="s">"ALLOW_ALL"</span>,
+      <span class="g">"allowedColumns"</span>: [],
+      <span class="g">"maskedColumns"</span>:  {},
+      <span class="g">"redactedColumns"</span>:[],
+      <span class="g">"auditEnabled"</span>:   true
+    },
+
+    {
+      <span class="c">// Compliance officers — all rows but PII masked</span>
+      <span class="g">"roleName"</span>:       <span class="s">"compliance_officer"</span>,
+      <span class="g">"tableName"</span>:      <span class="s">"silver.cleansed_transactions"</span>,
+      <span class="g">"rowPredicate"</span>:   <span class="s">"ALLOW_ALL"</span>,
+      <span class="g">"allowedColumns"</span>: [
+        <span class="s">"transaction_id"</span>, <span class="s">"account_number"</span>, <span class="s">"transaction_amount"</span>,
+        <span class="s">"transaction_ts"</span>, <span class="s">"jurisdiction"</span>, <span class="s">"merchant_category"</span>
+      ],
+      <span class="g">"maskedColumns"</span>: {
+        <span class="s">"account_number"</span>: <span class="s">"fgac_mask_account_number"</span>
+      },
+      <span class="g">"redactedColumns"</span>: [],
+      <span class="g">"auditEnabled"</span>: true
+    },
+
+    {
+      <span class="c">// UK analyst — UK rows only, account number masked</span>
+      <span class="g">"roleName"</span>:      <span class="s">"analyst_uk"</span>,
+      <span class="g">"tableName"</span>:     <span class="s">"silver.cleansed_transactions"</span>,
+      <span class="g">"rowPredicate"</span>:  <span class="s">"jurisdiction = 'UK'"</span>,
+      <span class="g">"allowedColumns"</span>: [
+        <span class="s">"transaction_id"</span>, <span class="s">"account_number"</span>, <span class="s">"transaction_amount"</span>,
+        <span class="s">"transaction_ts"</span>, <span class="s">"jurisdiction"</span>, <span class="s">"merchant_category"</span>
+      ],
+      <span class="g">"maskedColumns"</span>: { <span class="s">"account_number"</span>: <span class="s">"fgac_mask_account_number"</span> },
+      <span class="g">"redactedColumns"</span>: [<span class="s">"data_classification"</span>, <span class="s">"_ingested_at"</span>],
+      <span class="g">"auditEnabled"</span>: true
+    },
+
+    {
+      <span class="c">// EU analyst — EU jurisdictions only</span>
+      <span class="g">"roleName"</span>:      <span class="s">"analyst_eu"</span>,
+      <span class="g">"tableName"</span>:     <span class="s">"silver.cleansed_transactions"</span>,
+      <span class="g">"rowPredicate"</span>:  <span class="s">"jurisdiction IN ('DE','FR','NL','ES','IT','BE','PL')"</span>,
+      <span class="g">"allowedColumns"</span>: [
+        <span class="s">"transaction_id"</span>, <span class="s">"account_number"</span>, <span class="s">"transaction_amount"</span>,
+        <span class="s">"transaction_ts"</span>, <span class="s">"jurisdiction"</span>
+      ],
+      <span class="g">"maskedColumns"</span>: { <span class="s">"account_number"</span>: <span class="s">"fgac_mask_account_number"</span> },
+      <span class="g">"redactedColumns"</span>: [<span class="s">"data_classification"</span>],
+      <span class="g">"auditEnabled"</span>: true
+    }
+  ]
+}</code></pre>
+
+<h3>5.2 — Supported row predicates</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Syntax</th><th>Example</th></tr></thead>
+<tbody>
+<tr><td><code>ALLOW_ALL</code></td><td>Full row access</td></tr>
+<tr><td><code>DENY_ALL</code></td><td>No access (default when no rule matches)</td></tr>
+<tr><td><code>col = 'val'</code></td><td><code>jurisdiction = 'UK'</code></td></tr>
+<tr><td><code>col IN ('a','b','c')</code></td><td><code>jurisdiction IN ('DE','FR','NL')</code></td></tr>
+<tr><td><code>col IS NULL</code></td><td><code>deleted_at IS NULL</code></td></tr>
+<tr><td><code>A AND B</code></td><td><code>jurisdiction = 'UK' AND status != 'CANCELLED'</code></td></tr>
+<tr><td><code>A OR B</code></td><td><code>jurisdiction = 'UK' OR jurisdiction = 'IE'</code></td></tr>
+<tr><td><code>col &gt; n</code></td><td><code>risk_score &lt;= 7</code></td></tr>
+</tbody>
+</table></div>
+
+<h3>5.3 — Available masking UDFs</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>UDF Name</th><th>Input</th><th>Output</th></tr></thead>
+<tbody>
+<tr><td><code>fgac_mask_account_number</code></td><td><code>1234567890123456</code></td><td><code>************3456</code></td></tr>
+<tr><td><code>fgac_mask_email</code></td><td><code>john@bank.com</code></td><td><code>j***@bank.com</code></td></tr>
+<tr><td><code>fgac_redact_national_id</code></td><td><code>AB123456C</code></td><td><code>REDACTED</code></td></tr>
+<tr><td><code>fgac_mask_phone</code></td><td><code>+447911123456</code></td><td><code>+4479111234**</code></td></tr>
+<tr><td><code>fgac_mask_date_of_birth</code></td><td><code>1985-04-23</code></td><td><code>1985-**-**</code></td></tr>
+<tr><td><code>fgac_mask_sort_code</code></td><td><code>20-00-00</code></td><td><code>**-**-00</code></td></tr>
+</tbody>
+</table></div>
+
+<div class="prod">
+<div class="prod-head"><span class="icon">🏭</span><strong>Production — Policy Governance</strong></div>
+<p>Store <code>seed-policies.json</code> in your company's Git repository under <code>data-platform/policies/</code>. Require a pull request with data governance team approval for any change. Use CI to validate JSON schema. Treat this file with the same rigour as a firewall ruleset — it controls what data every user in your organisation can see.</p>
+</div>
+
+<div class="done-box"><strong>✅ Step 5 complete when:</strong><ul>
+<li><code>seed-policies.json</code> is on the Spark container at <code>/opt/spark/conf/seed-policies.json</code></li>
+<li>JSON is valid: <code>python3 -m json.tool seed-policies.json</code> exits without errors</li>
+<li>Every table that will be queried has at least one entitlement for each role that will access it</li>
+</ul></div>
+</section>
+
+<!-- ═══════════════════════════════════════ STEP 6 ═══════════════════════════════════════ -->
+<hr><section id="step6">
+<h2><span class="step-badge">6</span>Bootstrap the Policy Store</h2>
+<p>The first time any Spark job runs with the FGAC extension loaded, <code>SeedPolicyLoader</code> automatically creates <code>nessie.entitlements.rules</code> and seeds it. But it's cleaner to run a dedicated bootstrap job so you know exactly when and how this happened.</p>
+
+<h3>6.1 — Create the bootstrap script</h3>
+<pre><code><span class="c"># bootstrap_policy_store.py</span>
+from pyspark.sql import SparkSession
+
+spark = (SparkSession.builder.appName(<span class="s">"fgac-bootstrap"</span>)
+  <span class="c"># FGAC extension</span>
+  .config(<span class="s">"spark.sql.extensions"</span>,
+    <span class="s">"com.banking.lakehouse.fgac.spark.extension.FgacSparkExtension,"</span>
+    <span class="s">"org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,"</span>
+    <span class="s">"org.projectnessie.spark.extensions.NessieSparkSessionExtensions"</span>)
+  <span class="c"># Service account identity</span>
+  .config(<span class="s">"spark.app.current_user"</span>, <span class="s">"svc_airflow"</span>)
+  <span class="c"># Seed file location</span>
+  .config(<span class="s">"spark.driver.extraJavaOptions"</span>,
+    <span class="s">"-Dfgac.nessie.uri=http://nessie:19120/api/v1 "</span>
+    <span class="s">"-Dfgac.nessie.warehouse=s3a://warehouse/ "</span>
+    <span class="s">"-Dfgac.s3a.endpoint=http://minio:9000 "</span>
+    <span class="s">"-Dfgac.s3a.access.key=minioadmin "</span>
+    <span class="s">"-Dfgac.s3a.secret.key=minioadmin "</span>
+    <span class="s">"-Dfgac.policy.seed.path=file:///opt/spark/conf/seed-policies.json"</span>)
+  <span class="c"># Nessie catalog</span>
+  .config(<span class="s">"spark.sql.catalog.nessie"</span>,              <span class="s">"org.apache.iceberg.spark.SparkCatalog"</span>)
+  .config(<span class="s">"spark.sql.catalog.nessie.catalog-impl"</span>,  <span class="s">"org.apache.iceberg.nessie.NessieCatalog"</span>)
+  .config(<span class="s">"spark.sql.catalog.nessie.uri"</span>,           <span class="s">"http://nessie:19120/api/v1"</span>)
+  .config(<span class="s">"spark.sql.catalog.nessie.ref"</span>,           <span class="s">"main"</span>)
+  .config(<span class="s">"spark.sql.catalog.nessie.warehouse"</span>,      <span class="s">"s3a://warehouse/"</span>)
+  .config(<span class="s">"spark.sql.catalog.nessie.authentication.type"</span>, <span class="s">"NONE"</span>)
+  <span class="c"># S3A</span>
+  .config(<span class="s">"spark.hadoop.fs.s3a.endpoint"</span>,            <span class="s">"http://minio:9000"</span>)
+  .config(<span class="s">"spark.hadoop.fs.s3a.access.key"</span>,          <span class="s">"minioadmin"</span>)
+  .config(<span class="s">"spark.hadoop.fs.s3a.secret.key"</span>,          <span class="s">"minioadmin"</span>)
+  .config(<span class="s">"spark.hadoop.fs.s3a.path.style.access"</span>,   <span class="s">"true"</span>)
+  .config(<span class="s">"spark.hadoop.fs.s3a.impl"</span>, <span class="s">"org.apache.hadoop.fs.s3a.S3AFileSystem"</span>)
+  .getOrCreate())
+
+print(<span class="s">"Verifying policy store was seeded..."</span>)
+<span class="c"># The FGAC extension seeded the table on startup — verify by querying it</span>
+result = spark.sql(<span class="s">"SELECT role_name, table_name, row_predicate FROM nessie.entitlements.rules ORDER BY role_name"</span>)
+result.show(50, truncate=False)
+print(f<span class="s">"Total entitlement rules: {result.count()}"</span>)
+spark.stop()</code></pre>
+
+<pre><code><span class="c"># Submit the bootstrap job</span>
+docker exec -it spark-master spark-submit \
+  --master spark://spark-master:7077 \
+  --jars /opt/spark/jars/fgac-spark-adapter.jar \
+  /opt/spark/jobs/bootstrap_policy_store.py</code></pre>
+
+<h3>6.2 — Expected output</h3>
+<pre><code><span class="c"># You should see output similar to:</span>
+INFO  FgacCoreContext - Initialising FGAC Spring context on driver
+INFO  SeedPolicyLoader - Creating entitlements.rules table and seeding from: file:///opt/spark/conf/seed-policies.json
+INFO  SeedPolicyLoader - Seeded 14 entitlement rules into entitlements.rules
+
++------------------+----------------------------------+------------------------------------------+
+|role_name         |table_name                        |row_predicate                             |
++------------------+----------------------------------+------------------------------------------+
+|analyst_eu        |silver.cleansed_transactions      |jurisdiction IN ('DE','FR','NL','ES',...) |
+|analyst_uk        |silver.cleansed_transactions      |jurisdiction = 'UK'                       |
+|compliance_officer|silver.cleansed_transactions      |ALLOW_ALL                                 |
+|data_engineer     |silver.cleansed_transactions      |ALLOW_ALL                                 |
+...
++------------------+----------------------------------+------------------------------------------+
+Total entitlement rules: 14</code></pre>
+
+<h3>6.3 — Verify the Iceberg table exists in MinIO</h3>
+<pre><code>docker exec -it minio sh -c <span class="s">"
+  mc alias set local http://localhost:9000 minioadmin minioadmin
+  mc ls --recursive local/warehouse/ | grep entitlements
+"</span>
+<span class="c"># Should show metadata and data files for the entitlements.rules table</span></code></pre>
+
+<div class="prod">
+<div class="prod-head"><span class="icon">🏭</span><strong>Production — Policy Store Bootstrapping</strong></div>
+<p>Run the bootstrap as a one-time Airflow DAG tagged <code>bootstrap</code>. Once seeded, never delete or truncate <code>nessie.entitlements.rules</code>. If you need to wipe and re-seed: create a Nessie branch, drop and recreate the table there, validate, then merge. The table's Iceberg history acts as an audit trail of policy changes — preserve it.</p>
+</div>
+
+<div class="done-box"><strong>✅ Step 6 complete when:</strong><ul>
+<li>Bootstrap job prints <code>Seeded N entitlement rules</code> with no errors</li>
+<li><code>SELECT COUNT(*) FROM nessie.entitlements.rules</code> returns > 0</li>
+<li>MinIO shows Parquet files under <code>warehouse/entitlements/rules/data/</code></li>
+</ul></div>
+</section>
+
+<!-- ═══════════════════════════════════════ STEP 7 ═══════════════════════════════════════ -->
+<hr><section id="step7">
+<h2><span class="step-badge">7</span>Configure Spark with the FGAC Extension</h2>
+<p>Now make the FGAC extension and Nessie catalog the default for all Spark jobs by adding them to <code>spark-defaults.conf</code>. This means any <code>spark-submit</code> or Airflow SparkSubmitOperator automatically gets FGAC without extra flags.</p>
+
+<h3>7.1 — Edit spark-defaults.conf</h3>
+<pre><code><span class="c"># Find the config file</span>
+docker exec -it spark-master find /opt/spark -name spark-defaults.conf
+<span class="c"># Typically: /opt/spark/conf/spark-defaults.conf</span>
+
+<span class="c"># Open for editing</span>
+docker exec -it spark-master bash -c <span class="s">"cat >> /opt/spark/conf/spark-defaults.conf << 'EOF'
+
+# ── Iceberg + Nessie SQL Extensions ────────────────────────────────────────
+spark.sql.extensions  com.banking.lakehouse.fgac.spark.extension.FgacSparkExtension,org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,org.projectnessie.spark.extensions.NessieSparkSessionExtensions
+
+# ── Nessie Catalog ──────────────────────────────────────────────────────────
+spark.sql.catalog.nessie                              org.apache.iceberg.spark.SparkCatalog
+spark.sql.catalog.nessie.catalog-impl                 org.apache.iceberg.nessie.NessieCatalog
+spark.sql.catalog.nessie.uri                          http://nessie:19120/api/v1
+spark.sql.catalog.nessie.ref                          main
+spark.sql.catalog.nessie.warehouse                    s3a://warehouse/
+spark.sql.catalog.nessie.authentication.type          NONE
+
+# ── MinIO / S3A ──────────────────────────────────────────────────────────────
+spark.hadoop.fs.s3a.endpoint                          http://minio:9000
+spark.hadoop.fs.s3a.access.key                        minioadmin
+spark.hadoop.fs.s3a.secret.key                        minioadmin
+spark.hadoop.fs.s3a.path.style.access                 true
+spark.hadoop.fs.s3a.impl                              org.apache.hadoop.fs.s3a.S3AFileSystem
+spark.hadoop.fs.s3a.aws.credentials.provider          org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider
+spark.hadoop.fs.s3a.connection.ssl.enabled            false
+
+# ── FGAC Framework ───────────────────────────────────────────────────────────
+spark.driver.extraJavaOptions                         -Dfgac.nessie.uri=http://nessie:19120/api/v1 -Dfgac.nessie.warehouse=s3a://warehouse/ -Dfgac.s3a.endpoint=http://minio:9000 -Dfgac.s3a.access.key=minioadmin -Dfgac.s3a.secret.key=minioadmin -Dfgac.policy.seed.path=file:///opt/spark/conf/seed-policies.json -Dfgac.policy.cache.ttl-minutes=5 -Dfgac.audit.flush-interval-seconds=10
+spark.jars                                            /opt/spark/jars/fgac-spark-adapter.jar
+EOF"</span></code></pre>
+
+<h3>7.2 — Set the service account identity per job</h3>
+<p>This is the one config that changes per job — it tells FGAC which service account is running:</p>
+<pre><code><span class="c"># In spark-submit:</span>
+spark-submit \
+  --conf spark.app.current_user=svc_airflow \
+  your_job.py
+
+<span class="c"># In Python SparkSession:</span>
+SparkSession.builder \
+  .config(<span class="s">"spark.app.current_user"</span>, <span class="s">"svc_airflow"</span>) \
+  ...getOrCreate()</code></pre>
+
+<h3>7.3 — Configure Hive Metastore catalog (optional)</h3>
+<pre><code><span class="c"># Add to spark-defaults.conf if dual-write to HMS is needed</span>
+spark.sql.catalog.hive_catalog                        org.apache.iceberg.spark.SparkCatalog
+spark.sql.catalog.hive_catalog.type                   hive
+spark.sql.catalog.hive_catalog.uri                    thrift://hive-metastore:9083
+spark.sql.catalog.hive_catalog.warehouse               s3a://hive-warehouse/</code></pre>
+
+<div class="prod">
+<div class="prod-head"><span class="icon">🏭</span><strong>Production Configuration Changes</strong></div>
+<p>Replace <code>http://nessie:19120/api/v1</code> with your internal Nessie hostname. Replace all <code>minioadmin</code> credentials with your NetApp S3 service account keys. Set <code>spark.hadoop.fs.s3a.connection.ssl.enabled=true</code> for production. Move secrets out of <code>spark-defaults.conf</code> and into Kubernetes Secrets or HashiCorp Vault — inject them as environment variables at pod startup time using <code>spark.hadoop.fs.s3a.access.key=${S3_ACCESS_KEY}</code>.</p>
+</div>
+
+<div class="done-box"><strong>✅ Step 7 complete when:</strong><ul>
+<li><code>spark-defaults.conf</code> contains all six config sections</li>
+<li><code>docker exec spark-master cat /opt/spark/conf/spark-defaults.conf | grep FgacSparkExtension</code> returns the extensions line</li>
+</ul></div>
+</section>
+
+<!-- ═══════════════════════════════════════ STEP 8 ═══════════════════════════════════════ -->
+<hr><section id="step8">
+<h2><span class="step-badge">8</span>Validate FGAC with Test Queries</h2>
+<p>Before writing any real ETL, confirm that FGAC is enforcing policies correctly. Create a tiny test table, insert rows for multiple jurisdictions, then query it as different service accounts and verify each one sees exactly what they should.</p>
+
+<h3>8.1 — Create a test table with sample data</h3>
+<pre><code><span class="c"># validate_fgac.py</span>
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import lit
+
+spark = (SparkSession.builder
+  .appName(<span class="s">"fgac-validation"</span>)
+  .config(<span class="s">"spark.app.current_user"</span>, <span class="s">"svc_airflow"</span>)  <span class="c"># data_engineer role</span>
+  .getOrCreate())
+
+<span class="c"># Create the test table as data_engineer (full access)</span>
+spark.sql(<span class="s">"""
+CREATE TABLE IF NOT EXISTS nessie.silver.cleansed_transactions (
+  transaction_id    STRING,
+  account_number    STRING,
+  transaction_amount DOUBLE,
+  jurisdiction      STRING,
+  data_classification STRING,
+  _ingested_at      TIMESTAMP
+) USING iceberg
+"""</span>)
+
+<span class="c"># Insert test rows across jurisdictions</span>
+spark.sql(<span class="s">"""
+INSERT INTO nessie.silver.cleansed_transactions VALUES
+  ('TXN001', '1234567890123456', 100.00, 'UK',  'INTERNAL', current_timestamp()),
+  ('TXN002', '9876543210987654', 200.00, 'DE',  'INTERNAL', current_timestamp()),
+  ('TXN003', '1111222233334444', 300.00, 'US',  'INTERNAL', current_timestamp()),
+  ('TXN004', '5555666677778888', 150.00, 'UK',  'PII',      current_timestamp()),
+  ('TXN005', '4444333322221111', 250.00, 'FR',  'INTERNAL', current_timestamp())
+"""</span>)
+
+print(<span class="s">"Test data inserted. Total rows:"</span>, spark.sql(<span class="s">"SELECT COUNT(*) FROM nessie.silver.cleansed_transactions"</span>).collect()[0][0])
+spark.stop()</code></pre>
+
+<h3>8.2 — Test as analyst_uk (should see UK rows only, account masked)</h3>
+<pre><code><span class="c"># test_analyst_uk.py</span>
+spark = SparkSession.builder \
+  .appName(<span class="s">"test-analyst-uk"</span>) \
+  .config(<span class="s">"spark.app.current_user"</span>, <span class="s">"svc_analyst_uk"</span>) \
+  .getOrCreate()
+
+<span class="c"># Add svc_analyst_uk → analyst_uk role mapping in seed-policies.json SERVICE_ACCOUNT_ROLES</span>
+result = spark.sql(<span class="s">"SELECT * FROM nessie.silver.cleansed_transactions"</span>)
+result.show(truncate=False)
+print(<span class="s">"Row count (expect 2 — UK only):"</span>, result.count())</code></pre>
+
+<p>Expected output:</p>
+<pre><code>+----------+----------------+------------------+------------+
+|txn_id    |account_number  |transaction_amount|jurisdiction|
++----------+----------------+------------------+------------+
+|TXN001    |************3456|100.0             |UK          |
+|TXN004    |************8888|150.0             |UK          |
++----------+----------------+------------------+------------+
+Row count (expect 2 — UK only): 2
+
+<span class="c"># Note: data_classification and _ingested_at are NOT in output (redacted)</span>
+<span class="c"># Note: account_number shows only last 4 digits (masked)</span>
+<span class="c"># Note: US, DE, FR rows are completely absent (row filter applied)</span></code></pre>
+
+<h3>8.3 — Test as data_engineer (should see all 5 rows, nothing masked)</h3>
+<pre><code>spark = SparkSession.builder \
+  .config(<span class="s">"spark.app.current_user"</span>, <span class="s">"svc_airflow"</span>) \
+  ...getOrCreate()
+
+result = spark.sql(<span class="s">"SELECT * FROM nessie.silver.cleansed_transactions"</span>)
+result.show(truncate=False)
+<span class="c"># Expect: 5 rows, full account numbers, all columns visible</span></code></pre>
+
+<h3>8.4 — Test DENY — unknown user</h3>
+<pre><code>spark = SparkSession.builder \
+  .config(<span class="s">"spark.app.current_user"</span>, <span class="s">"svc_unknown_user"</span>) \
+  ...getOrCreate()
+
+result = spark.sql(<span class="s">"SELECT * FROM nessie.silver.cleansed_transactions"</span>)
+result.show()
+<span class="c"># Expect: 0 rows — DENY_ALL applied, audit event logged as DENIED</span></code></pre>
+
+<h3>8.5 — Verify audit events were created</h3>
+<pre><code>spark.sql(<span class="s">"""
+  SELECT principal_id, outcome, row_filter_applied, event_ts
+  FROM nessie.audit.query_log
+  ORDER BY event_ts DESC
+  LIMIT 10
+"""</span>).show(truncate=False)
+<span class="c"># Should show entries for svc_analyst_uk (ALLOWED), svc_unknown_user (DENIED)</span></code></pre>
+
+<div class="prod">
+<div class="prod-head"><span class="icon">🏭</span><strong>Production — Validation Gate</strong></div>
+<p>Make this validation script part of your CI/CD pipeline. Every policy change should trigger a re-run of the validation tests before the new <code>seed-policies.json</code> is promoted to production. Add assertions: <code>assert result.count() == expected_count</code> and check that specific columns are absent or masked. A failed assertion should block the deployment.</p>
+</div>
+
+<div class="done-box"><strong>✅ Step 8 complete when:</strong><ul>
+<li><code>svc_airflow</code> (data_engineer) sees all 5 rows with full account numbers</li>
+<li><code>svc_analyst_uk</code> sees exactly 2 rows, account numbers masked, redacted columns absent</li>
+<li><code>svc_unknown_user</code> sees 0 rows</li>
+<li><code>nessie.audit.query_log</code> has entries for all three queries</li>
+</ul></div>
+</section>
+
+<!-- ═══════════════════════════════════════ STEP 9 ═══════════════════════════════════════ -->
+<hr><section id="step9">
+<h2><span class="step-badge">9</span>Write the Banking ETL DAG in Airflow</h2>
+<p>The ETL pipeline follows the medallion architecture: <strong>Bronze</strong> (raw ingest) → <strong>Silver</strong> (cleansed) → <strong>Gold</strong> (aggregated). Each run uses a Nessie branch so data is isolated until validation passes.</p>
+
+<h3>9.1 — DAG structure overview</h3>
+<pre><code><span class="c">                    ┌─────────────────────┐
+                    │  create_run_branch   │  creates etl-txn-YYYYMMDD off transactions/dev
+                    └──────────┬──────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │  ingest_to_bronze    │  raw CSV/JSON → nessie.bronze.raw_transactions
+                    └──────────┬──────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │  cleanse_to_silver   │  bronze → nessie.silver.cleansed_transactions
+                    └──────────┬──────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │  aggregate_to_gold   │  silver → nessie.gold.account_summary
+                    └──────────┬──────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │  validate_row_counts │  assert counts match expectations
+                    └──────────┬──────────┘
+                               │
+                ┌──────────────▼──────────────────┐
+                │  merge_branch_to_dev             │  merge etl-txn-YYYYMMDD → transactions/dev
+                └──────────────┬──────────────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │  drop_run_branch     │  cleanup
+                    └─────────────────────┘</span></code></pre>
+
+<h3>9.2 — Full DAG file</h3>
+<pre><code><span class="c"># dags/banking_etl_dag.py</span>
+from airflow import DAG
+from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
+from airflow.operators.python import PythonOperator
+from airflow.utils.dates import days_ago
+from datetime import datetime, timedelta
+import requests
+
+DAG_ID       = <span class="s">"banking_etl_pipeline"</span>
+NESSIE_URL   = <span class="s">"http://nessie:19120/api/v1"</span>
+SPARK_CONN   = <span class="s">"spark_default"</span>
+SPARK_JAR    = <span class="s">"/opt/spark/jars/fgac-spark-adapter.jar"</span>
+
+default_args = {
+    <span class="s">"owner"</span>:          <span class="s">"data-platform"</span>,
+    <span class="s">"retries"</span>:         1,
+    <span class="s">"retry_delay"</span>:     timedelta(minutes=5),
+    <span class="s">"email_on_failure"</span>: True,
+    <span class="s">"email"</span>:           [<span class="s">"data-alerts@bank.internal"</span>],
+}
+
+def get_run_branch(**ctx):
+    return f<span class="s">"etl-txn-{ctx['ds_nodash']}"</span>  <span class="c"># e.g. etl-txn-20260316</span>
+
+def create_nessie_branch(**ctx):
+    branch = get_run_branch(**ctx)
+    base   = <span class="s">"transactions/dev"</span>
+    base_hash = requests.get(f<span class="s">"{NESSIE_URL}/trees/tree/{base.replace('/','%2F')}"</span>).json()[<span class="s">"hash"</span>]
+    resp = requests.post(f<span class="s">"{NESSIE_URL}/trees/tree"</span>,
+        json={<span class="s">"name"</span>: branch, <span class="s">"type"</span>: <span class="s">"BRANCH"</span>, <span class="s">"hash"</span>: base_hash})
+    resp.raise_for_status()
+    print(f<span class="s">"Created branch: {branch}"</span>)
+
+def merge_nessie_branch(**ctx):
+    branch = get_run_branch(**ctx)
+    hash_ = requests.get(f<span class="s">"{NESSIE_URL}/trees/tree/{branch.replace('/','%2F')}"</span>).json()[<span class="s">"hash"</span>]
+    resp = requests.post(f<span class="s">"{NESSIE_URL}/trees/tree/transactions%2Fdev/merge"</span>,
+        json={<span class="s">"fromRefName"</span>: branch, <span class="s">"fromHash"</span>: hash_})
+    resp.raise_for_status()
+    print(f<span class="s">"Merged {branch} → transactions/dev"</span>)
+
+def drop_nessie_branch(**ctx):
+    branch = get_run_branch(**ctx)
+    hash_ = requests.get(f<span class="s">"{NESSIE_URL}/trees/tree/{branch.replace('/','%2F')}"</span>).json()[<span class="s">"hash"</span>]
+    requests.delete(f<span class="s">"{NESSIE_URL}/trees/branch/{branch.replace('/','%2F')}?expectedHash={hash_}"</span>)
+    print(f<span class="s">"Dropped branch: {branch}"</span>)
+
+<span class="c"># Common Spark config applied to every task</span>
+def spark_conf(ds_nodash):
+    return {
+        <span class="s">"spark.app.current_user"</span>: <span class="s">"svc_airflow"</span>,
+        <span class="s">"spark.sql.catalog.nessie.ref"</span>: f<span class="s">"etl-txn-{ds_nodash}"</span>,  <span class="c"># write to run branch!</span>
+        <span class="s">"spark.driver.extraJavaOptions"</span>:
+            <span class="s">"-Dfgac.nessie.uri=http://nessie:19120/api/v1 "</span>
+            <span class="s">"-Dfgac.nessie.warehouse=s3a://warehouse/ "</span>
+            <span class="s">"-Dfgac.s3a.endpoint=http://minio:9000 "</span>
+            <span class="s">"-Dfgac.s3a.access.key=minioadmin "</span>
+            <span class="s">"-Dfgac.s3a.secret.key=minioadmin"</span>
+    }
+
+with DAG(DAG_ID, default_args=default_args,
+         schedule_interval=<span class="s">"0 2 * * *"</span>,  <span class="c"># 2am daily</span>
+         start_date=days_ago(1), catchup=False) as dag:
+
+    create_branch = PythonOperator(
+        task_id=<span class="s">"create_run_branch"</span>, python_callable=create_nessie_branch)
+
+    bronze = SparkSubmitOperator(
+        task_id=<span class="s">"ingest_to_bronze"</span>, conn_id=SPARK_CONN,
+        application=<span class="s">"/opt/airflow/spark_jobs/ingest_bronze.py"</span>,
+        jars=SPARK_JAR,
+        conf=spark_conf(<span class="s">"{{ ds_nodash }}"</span>))
+
+    silver = SparkSubmitOperator(
+        task_id=<span class="s">"cleanse_to_silver"</span>, conn_id=SPARK_CONN,
+        application=<span class="s">"/opt/airflow/spark_jobs/cleanse_silver.py"</span>,
+        jars=SPARK_JAR,
+        conf=spark_conf(<span class="s">"{{ ds_nodash }}"</span>))
+
+    gold = SparkSubmitOperator(
+        task_id=<span class="s">"aggregate_to_gold"</span>, conn_id=SPARK_CONN,
+        application=<span class="s">"/opt/airflow/spark_jobs/aggregate_gold.py"</span>,
+        jars=SPARK_JAR,
+        conf=spark_conf(<span class="s">"{{ ds_nodash }}"</span>))
+
+    merge_branch = PythonOperator(
+        task_id=<span class="s">"merge_branch_to_dev"</span>, python_callable=merge_nessie_branch)
+
+    drop_branch = PythonOperator(
+        task_id=<span class="s">"drop_run_branch"</span>, python_callable=drop_nessie_branch)
+
+    create_branch >> bronze >> silver >> gold >> merge_branch >> drop_branch</code></pre>
+
+<div class="prod">
+<div class="prod-head"><span class="icon">🏭</span><strong>Production DAG Hardening</strong></div>
+<p>Replace hardcoded credentials with Airflow Connections and Variables. Add a <strong>data quality check task</strong> between gold and merge_branch — use Great Expectations or a simple row-count assertion. Add a <strong>rollback task</strong> that runs on_failure_callback to drop the run branch so a failed run never leaves orphaned branches. Set <code>max_active_runs=1</code> to prevent concurrent runs writing to overlapping branches.</p>
+</div>
+
+<div class="done-box"><strong>✅ Step 9 complete when:</strong><ul>
+<li><code>banking_etl_pipeline</code> DAG is visible in the Airflow UI without import errors</li>
+<li>The DAG graph shows all 6 tasks in the correct dependency order</li>
+<li>Spark job Python files exist at the paths referenced in the DAG</li>
+</ul></div>
+</section>
+
+<!-- ═══════════════════════════════════════ STEP 10 ═══════════════════════════════════════ -->
+<hr><section id="step10">
+<h2><span class="step-badge">10</span>Run the Pipeline End-to-End</h2>
+<p>Trigger the DAG, monitor each task, and verify the data landed correctly at each layer with FGAC enforced throughout.</p>
+
+<h3>10.1 — Trigger the DAG</h3>
+<pre><code><span class="c"># Via Airflow CLI</span>
+docker exec -it airflow-webserver airflow dags trigger banking_etl_pipeline
+
+<span class="c"># Or via REST API</span>
+curl -X POST http://localhost:8081/api/v1/dags/banking_etl_pipeline/dagRuns \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -u airflow:airflow \
+  -d <span class="s">'{"conf": {}}'</span></code></pre>
+
+<h3>10.2 — Watch task logs in real time</h3>
+<pre><code><span class="c"># Follow logs for the active run</span>
+docker exec -it airflow-webserver airflow tasks logs \
+  banking_etl_pipeline ingest_to_bronze latest
+
+<span class="c"># Check FGAC initialisation in the Spark job log — look for:</span>
+<span class="c"># INFO  FgacCoreContext - Initialising FGAC Spring context on driver</span>
+<span class="c"># INFO  PolicyCacheManager - Policy store loaded: 14 entitlements</span>
+<span class="c"># INFO  FgacSparkExtension - FGAC Spark extension registered</span></code></pre>
+
+<h3>10.3 — Verify data landed at each layer</h3>
+<pre><code><span class="c"># Run a quick verification Spark job after the DAG completes</span>
+docker exec -it spark-master spark-sql \
+  --conf spark.app.current_user=svc_airflow \
+  --conf spark.sql.catalog.nessie.ref=transactions/dev
+
+<span class="c"># In spark-sql shell:</span>
+SELECT COUNT(*) FROM nessie.bronze.raw_transactions;
+SELECT COUNT(*) FROM nessie.silver.cleansed_transactions;
+SELECT COUNT(*) FROM nessie.gold.account_summary;
+<span class="c"># All three should return > 0</span></code></pre>
+
+<h3>10.4 — Verify Nessie branch history</h3>
+<pre><code><span class="c"># After a successful run, transactions/dev should have new commits</span>
+curl -s <span class="s">"http://localhost:19120/api/v1/trees/tree/transactions%2Fdev/log?maxRecords=5"</span> \
+  | python3 -c <span class="s">"
+import sys, json
+for c in json.load(sys.stdin)['logEntries']:
+    print(f'  {c[\"commitMeta\"][\"hash\"][:12]}  {c[\"commitMeta\"][\"message\"]}')
+"</span></code></pre>
+
+<h3>10.5 — Confirm the run branch was cleaned up</h3>
+<pre><code><span class="c"># The etl-txn-YYYYMMDD branch should NOT appear after successful merge+drop</span>
+curl -s http://localhost:19120/api/v1/trees \
+  | python3 -c <span class="s">"
+import sys, json
+branches = [t['name'] for t in json.load(sys.stdin)['references']]
+print('Branches:', branches)
+assert not any('etl-txn' in b for b in branches), 'Run branch was not cleaned up!'
+print('Clean: no orphaned run branches')
+"</span></code></pre>
+
+<div class="done-box"><strong>✅ Step 10 complete when:</strong><ul>
+<li>All 6 DAG tasks show green in the Airflow UI</li>
+<li>Row counts are > 0 at bronze, silver, and gold layers on <code>transactions/dev</code></li>
+<li>No <code>etl-txn-*</code> branches remain in Nessie after the run</li>
+<li>Spark logs show FGAC extension initialisation without errors</li>
+</ul></div>
+</section>
+
+<!-- ═══════════════════════════════════════ STEP 11 ═══════════════════════════════════════ -->
+<hr><section id="step11">
+<h2><span class="step-badge">11</span>Query the Audit Log</h2>
+<p>Every query — allowed or denied — is written to <code>nessie.audit.query_log</code>. This is your compliance reporting table. Partitioned by <code>day(event_ts)</code> with 7-year snapshot retention.</p>
+
+<h3>11.1 — View recent audit events</h3>
+<pre><code>spark.sql(<span class="s">"""
+SELECT
+  from_unixtime(event_ts/1000)    AS query_time,
+  principal_id,
+  engine_name,
+  table_name,
+  outcome,
+  row_filter_applied,
+  planning_duration_ms
+FROM nessie.audit.query_log
+ORDER BY event_ts DESC
+LIMIT 20
+"""</span>).show(truncate=False)</code></pre>
+
+<h3>11.2 — Access summary by user (last 7 days)</h3>
+<pre><code>spark.sql(<span class="s">"""
+SELECT
+  principal_id,
+  table_name,
+  outcome,
+  COUNT(*)                          AS query_count,
+  MIN(from_unixtime(event_ts/1000)) AS first_access,
+  MAX(from_unixtime(event_ts/1000)) AS last_access
+FROM nessie.audit.query_log
+WHERE event_ts >= UNIX_TIMESTAMP(DATE_SUB(CURRENT_DATE, 7)) * 1000
+GROUP BY 1, 2, 3
+ORDER BY last_access DESC
+"""</span>).show(truncate=False)</code></pre>
+
+<h3>11.3 — Find all DENIED queries</h3>
+<pre><code>spark.sql(<span class="s">"""
+SELECT
+  from_unixtime(event_ts/1000) AS time,
+  principal_id,
+  table_name,
+  engine_name
+FROM nessie.audit.query_log
+WHERE outcome = 'DENIED'
+ORDER BY event_ts DESC
+"""</span>).show(truncate=False)
+<span class="c"># Denied queries are a security signal — review regularly</span></code></pre>
+
+<h3>11.4 — Time-travel: view audit log as of 30 days ago</h3>
+<pre><code><span class="c"># Iceberg time travel on the audit log itself</span>
+spark.sql(<span class="s">"""
+SELECT COUNT(*)
+FROM nessie.audit.query_log
+TIMESTAMP AS OF '2026-02-16 00:00:00'
+"""</span>).show()</code></pre>
+
+<div class="prod">
+<div class="prod-head"><span class="icon">🏭</span><strong>Production — Compliance Reporting</strong></div>
+<p>Schedule a daily Airflow DAG that runs the access summary query and exports results to a compliance dashboard or sends them to your SIEM (Splunk, Elastic). The <code>LoggingAuditSink</code> can be enabled as a backup — configure your log forwarder to ship the <code>AUDIT_EVENT</code> log lines to your SIEM in parallel with the Iceberg sink. For GDPR subject access requests, query <code>WHERE principal_id = 'svc_analyst_uk' AND table_name LIKE '%customers%'</code>.</p>
+</div>
+
+<div class="done-box"><strong>✅ Step 11 complete when:</strong><ul>
+<li><code>SELECT COUNT(*) FROM nessie.audit.query_log</code> returns > 0 after running test queries from Step 8</li>
+<li>ALLOWED and DENIED entries are both present and contain the correct metadata</li>
+</ul></div>
+</section>
+
+<!-- ═══════════════════════════════════════ STEP 12 ═══════════════════════════════════════ -->
+<hr><section id="step12">
+<h2><span class="step-badge">12</span>Manage Policies at Runtime</h2>
+<p>You never need to restart Spark or redeploy the JAR to change access policies. The cache refreshes every 5 minutes automatically.</p>
+
+<h3>12.1 — Add a new role/table entitlement</h3>
+<pre><code>spark.sql(<span class="s">"""
+INSERT INTO nessie.entitlements.rules
+  (role_name, table_name, row_predicate,
+   allowed_columns, masked_columns, redacted_columns,
+   audit_enabled, description)
+VALUES (
+  'analyst_sg',
+  'silver.cleansed_transactions',
+  'jurisdiction = ''SG''',
+  '["transaction_id","account_number","transaction_amount","transaction_ts","jurisdiction"]',
+  '{"account_number":"fgac_mask_account_number"}',
+  '["data_classification","_ingested_at"]',
+  true,
+  'Singapore analyst - account numbers masked'
+)
+"""</span>)
+print(<span class="s">"New entitlement added. Will be active within 5 minutes (cache TTL)."</span>)</code></pre>
+
+<h3>12.2 — Modify an existing entitlement</h3>
+<pre><code><span class="c"># Iceberg supports UPDATE via MERGE INTO</span>
+spark.sql(<span class="s">"""
+MERGE INTO nessie.entitlements.rules t
+USING (
+  SELECT
+    'analyst_uk'                 AS role_name,
+    'silver.cleansed_transactions' AS table_name,
+    'jurisdiction IN (''UK'', ''IE'')' AS row_predicate
+) s ON t.role_name = s.role_name AND t.table_name = s.table_name
+WHEN MATCHED THEN UPDATE SET t.row_predicate = s.row_predicate
+"""</span>)
+<span class="c"># analyst_uk can now see UK + Ireland rows</span></code></pre>
+
+<h3>12.3 — Revoke access</h3>
+<pre><code>spark.sql(<span class="s">"""
+DELETE FROM nessie.entitlements.rules
+WHERE role_name = 'analyst_sg'
+  AND table_name = 'silver.cleansed_transactions'
+"""</span>)</code></pre>
+
+<h3>12.4 — Force immediate cache refresh (no restart needed)</h3>
+<pre><code><span class="c"># Add to your Spark job or run as a standalone snippet</span>
+from pyspark.sql import SparkSession
+spark = SparkSession.builder.getOrCreate()
+
+<span class="c"># Access the FGAC context via the JVM gateway</span>
+jvm = spark.sparkContext._jvm
+fgac_ctx = jvm.com.banking.lakehouse.fgac.core.context.FgacCoreContext.getInstance()
+fgac_ctx.getPolicyCacheManager().invalidateAll()
+print(<span class="s">"FGAC policy cache invalidated — new policies are active immediately"</span>)</code></pre>
+
+<h3>12.5 — Time-travel: view policy state at a past point</h3>
+<pre><code><span class="c"># What entitlements existed on January 1st?</span>
+spark.sql(<span class="s">"""
+SELECT role_name, table_name, row_predicate
+FROM nessie.entitlements.rules
+TIMESTAMP AS OF '2026-01-01 00:00:00'
+ORDER BY role_name
+"""</span>).show()</code></pre>
+
+<div class="prod">
+<div class="prod-head"><span class="icon">🏭</span><strong>Production — Policy Change Management</strong></div>
+<p>All INSERT/UPDATE/DELETE operations on <code>nessie.entitlements.rules</code> should go through a change management process: (1) update <code>seed-policies.json</code> in Git, (2) get approval via pull request, (3) run CI validation, (4) apply via an Airflow DAG tagged <code>policy-change</code>. Never allow direct ad-hoc edits in production. The Iceberg table's snapshot history is your audit trail of policy changes — never expire it.</p>
+</div>
+
+<div class="done-box"><strong>✅ Step 12 complete when:</strong><ul>
+<li>You can INSERT a new entitlement and after 5 minutes a test query reflects the new policy</li>
+<li>DELETE removes access as expected</li>
+<li>Cache invalidation works via the JVM gateway</li>
+</ul></div>
+</section>
+
+<!-- ═══════════════════════════════════════ STEP 13 ═══════════════════════════════════════ -->
+<hr><section id="step13">
+<h2><span class="step-badge">13</span>Monitor and Operate</h2>
+<p>Day-2 operations: keeping the system healthy, understanding the right metrics to watch, and what to do when things go wrong.</p>
+
+<h3>13.1 — Key health checks</h3>
+<pre><code><span class="c"># 1. Is the FGAC policy store healthy?</span>
+<span class="c">#    In Spark logs, look for this at startup:</span>
+<span class="c">#    INFO PolicyCacheManager - Policy store loaded: N entitlements</span>
+<span class="c">#    ERROR FgacCoreContext - POLICY STORE UNHEALTHY means Nessie is down</span>
+
+<span class="c"># 2. Are audit events flowing?</span>
+spark.sql(<span class="s">"SELECT COUNT(*) FROM nessie.audit.query_log WHERE event_ts > (UNIX_TIMESTAMP() - 3600) * 1000"</span>).show()
+<span class="c"># If this returns 0 but queries are running, check AsyncAuditEventEmitter logs</span>
+
+<span class="c"># 3. Is the policy cache expiring too fast?</span>
+<span class="c">#    Check Spark driver logs for repeated:</span>
+<span class="c">#    INFO PolicyCacheManager - Cache miss for (analyst_uk, silver.cleansed_transactions)</span>
+<span class="c">#    If frequent, increase: -Dfgac.policy.cache.ttl-minutes=15</span>
+
+<span class="c"># 4. Is the audit queue backing up?</span>
+<span class="c">#    Look for WARN in driver logs:</span>
+<span class="c">#    WARN AsyncAuditEventEmitter - Audit queue full — dropped N events</span>
+<span class="c">#    Fix: increase -Dfgac.audit.queue-capacity=50000</span></code></pre>
+
+<h3>13.2 — Configuration tuning reference</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Scenario</th><th>Property</th><th>Recommendation</th></tr></thead>
+<tbody>
+<tr><td>Frequent cache misses</td><td><code>fgac.policy.cache.ttl-minutes</code></td><td>Increase to 15–30 min in prod</td></tr>
+<tr><td>High query volume</td><td><code>fgac.audit.queue-capacity</code></td><td>Increase to 50000+</td></tr>
+<tr><td>Audit lag</td><td><code>fgac.audit.flush-interval-seconds</code></td><td>Reduce to 5 for near-realtime</td></tr>
+<tr><td>Policy change needs to take effect immediately</td><td>n/a — invalidate cache</td><td>Call <code>invalidateAll()</code> via JVM gateway</td></tr>
+<tr><td>Audit Iceberg files growing large</td><td><code>fgac.audit.batch-size</code></td><td>Increase to 500 for fewer, larger files</td></tr>
+</tbody>
+</table></div>
+
+<h3>13.3 — Iceberg table maintenance</h3>
+<pre><code><span class="c"># Run weekly — expire old snapshots on audit and entitlements tables</span>
+spark.sql(<span class="s">"""
+CALL nessie.system.expire_snapshots(
+  table => 'nessie.audit.query_log',
+  older_than => TIMESTAMP '2019-01-01 00:00:00',  -- keep 7 years
+  retain_last => 1
+)
+"""</span>)
+
+<span class="c"># Compact small Parquet files in the audit log (run monthly)</span>
+spark.sql(<span class="s">"""
+CALL nessie.system.rewrite_data_files(
+  table => 'nessie.audit.query_log',
+  strategy => 'binpack',
+  options => map('target-file-size-bytes', '134217728')  -- 128MB target
+)
+"""</span>)</code></pre>
+
+<h3>13.4 — What to monitor in production</h3>
+<ul class="checklist">
+<li>DENIED audit events — high volume indicates a misconfigured role or a probing attack</li>
+<li>Nessie container memory — set JVM heap: <code>-Xmx2g</code> for production. Watch for GC pressure.</li>
+<li>MinIO / NetApp disk usage — Iceberg never deletes old data files automatically without <code>expire_snapshots</code></li>
+<li>Audit table partition count — should grow by ~1 partition/day. Large gaps mean audit flush is broken.</li>
+<li>FGAC policy cache miss rate — visible in Spark driver logs. High miss rate degrades query latency.</li>
+<li>Nessie PostgreSQL storage — Nessie metadata grows linearly with commits. Monitor DB size.</li>
+</ul>
+
+<h3>13.5 — Disaster recovery</h3>
+<pre><code><span class="c"># Scenario: entitlements.rules table corrupted</span>
+<span class="c"># Recovery: time-travel to last known good snapshot</span>
+spark.sql(<span class="s">"""
+INSERT OVERWRITE nessie.entitlements.rules
+SELECT * FROM nessie.entitlements.rules
+TIMESTAMP AS OF '2026-03-15 00:00:00'
+"""</span>)
+
+<span class="c"># Scenario: need to roll back entire Nessie branch</span>
+<span class="c"># Use Nessie's assign API to reset transactions/dev to a past commit</span>
+curl -X PUT <span class="s">"$NESSIE_URL/trees/branch/transactions%2Fdev"</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{"type":"BRANCH","name":"transactions/dev","hash":"&lt;last-good-hash&gt;"}'</span></code></pre>
+
+<div class="prod">
+<div class="prod-head"><span class="icon">🏭</span><strong>Production — Runbook Essentials</strong></div>
+<p><strong>If FGAC extension fails to load:</strong> Spark will refuse to start all sessions — check driver logs for Spring context errors, ensure the fat JAR is on the classpath and Nessie is reachable. <strong>If audit log stops receiving events:</strong> check <code>IcebergAuditSink.isHealthy()</code> — if false, Nessie is unreachable; events fall back to <code>LoggingAuditSink</code> automatically. <strong>If policy cache never refreshes:</strong> check that <code>IcebergPolicyStore.reload()</code> is not throwing — usually means a Nessie connectivity blip. <strong>Never restart Spark to fix a policy</strong> — use cache invalidation instead.</p>
+</div>
+
+<div class="done-box"><strong>✅ Step 13 complete when:</strong><ul>
+<li>You can read FGAC health status from Spark driver logs</li>
+<li>Iceberg maintenance jobs are scheduled in Airflow (weekly expire_snapshots, monthly rewrite_data_files)</li>
+<li>You have a runbook entry for each of the four common failure scenarios</li>
+</ul></div>
+</section>
+
+<!-- FOOTER -->
+<div style="margin-top:80px;padding:32px 0;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px">
+  <div>
+    <span style="font-family:var(--font-serif);font-size:17px;color:var(--text);font-weight:600">iceberg-fgac</span>
+    <span style="color:var(--text-3);font-size:13px;margin-left:12px">Production Setup Guide</span>
+  </div>
+  <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-3)">
+    Iceberg 1.9.2 &nbsp;·&nbsp; Spark 3.5.5 &nbsp;·&nbsp; Nessie 0.104.5 &nbsp;·&nbsp; Java 17
+  </div>
+</div>
+</main>
+</div>
+</body>
+</html>
